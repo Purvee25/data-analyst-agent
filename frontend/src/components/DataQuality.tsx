@@ -1,0 +1,78 @@
+// KPI stat tiles + a breakdown of what the cleaning step fixed vs. flagged.
+// Reads the structured DataQualityReport so "fixed" (green) and "flagged"
+// (amber, needs a human's eye) stay visually distinct — the same distinction
+// the Python report makes.
+
+import type { QualityReport } from "../types";
+
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="card p-4">
+      <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-slate-50">{value}</p>
+      {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
+    </div>
+  );
+}
+
+function Chips({ title, items, tone }: { title: string; items: string[]; tone: "fix" | "flag" }) {
+  if (items.length === 0) return null;
+  const cls =
+    tone === "fix"
+      ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/20"
+      : "bg-amber-500/10 text-amber-300 ring-amber-500/20";
+  return (
+    <div>
+      <p className="mb-2 text-sm font-semibold text-slate-300">{title}</p>
+      <div className="flex flex-wrap gap-2">
+        {items.map((it) => (
+          <span key={it} className={`rounded-lg px-2.5 py-1 text-xs ring-1 ${cls}`}>
+            {it}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function DataQuality({ report }: { report: QualityReport }) {
+  const anomalyCount = report.anomalies.length;
+  const flaggedCols = Object.keys(report.missing_values_flagged).length;
+
+  const fixes: string[] = [];
+  report.date_columns_parsed.forEach((c) => fixes.push(`Parsed date: ${c}`));
+  report.numeric_columns_coerced.forEach((c) => fixes.push(`Numeric: ${c}`));
+  report.categorical_columns_normalized.forEach((c) => fixes.push(`Normalized: ${c}`));
+  Object.entries(report.missing_values_filled).forEach(([c, n]) => fixes.push(`Filled ${c} (${n})`));
+
+  const flags: string[] = [];
+  Object.entries(report.missing_values_flagged).forEach(([c, n]) => flags.push(`Missing in ${c} (${n})`));
+  Object.entries(report.unparseable_dates).forEach(([c, n]) => flags.push(`Bad dates in ${c} (${n})`));
+  report.anomalies.forEach((a) => flags.push(a));
+
+  return (
+    <section className="space-y-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Rows" value={report.final_shape[0].toLocaleString()} hint={`from ${report.original_shape[0].toLocaleString()}`} />
+        <Stat label="Columns" value={String(report.final_shape[1])} />
+        <Stat label="Duplicates removed" value={String(report.duplicate_rows_removed)} />
+        <Stat
+          label="Anomalies flagged"
+          value={String(anomalyCount + flaggedCols)}
+          hint={anomalyCount + flaggedCols === 0 ? "clean" : "needs review"}
+        />
+      </div>
+
+      <div className="card space-y-4 p-5">
+        <div className="flex items-center gap-2 text-sm text-slate-400">
+          <span className="rounded-md bg-white/5 px-2 py-0.5">Encoding: {report.encoding_used}</span>
+        </div>
+        <Chips title="Fixed automatically" items={fixes} tone="fix" />
+        <Chips title="Flagged for review (not altered)" items={flags} tone="flag" />
+        {fixes.length === 0 && flags.length === 0 && (
+          <p className="text-sm text-slate-400">No significant data-quality issues detected.</p>
+        )}
+      </div>
+    </section>
+  );
+}

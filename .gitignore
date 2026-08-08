@@ -1,0 +1,25 @@
+# Secrets — NEVER commit the real API key (production req #13)
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Local request logs (may contain user questions)
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Claude Code local settings (machine-specific permissions)
+.claude/settings.local.json
