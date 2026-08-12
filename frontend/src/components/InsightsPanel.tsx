@@ -89,12 +89,15 @@ export default function InsightsPanel({
 
   return (
     <section>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-100">🔍 Proactive insights</h2>
+      <div className="mb-5 flex items-center justify-between border-b border-line pb-3">
+        <div>
+          <p className="kicker accent-mark mb-1">Two-agent pipeline</p>
+          <h2 className="font-serif text-2xl font-medium text-ink">Proactive insights</h2>
+        </div>
         <button
           onClick={start}
           disabled={running}
-          className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-paper transition hover:bg-black disabled:opacity-50"
         >
           {running ? "Streaming…" : ran ? "Regenerate" : "Generate insights"}
         </button>
@@ -107,7 +110,7 @@ export default function InsightsPanel({
       )}
 
       {error && (
-        <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+        <div className="mb-4 border-l-2 border-accent bg-accent-soft px-4 py-3 text-sm text-accent-ink">
           {error}
         </div>
       )}
@@ -127,16 +130,16 @@ export default function InsightsPanel({
       )}
 
       {stage === "done" && insights.length === 0 && !error && (
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-ink-soft">
           Every candidate was rejected by the critic — nothing met the statistical bar this run.
         </p>
       )}
 
       {!ran && (
-        <p className="text-sm text-slate-400">
-          Click <span className="text-slate-200">Generate insights</span> and watch the two agents work
-          live — the insight-finder proposes findings, then an independent critic vets each one before it
-          appears.
+        <p className="max-w-2xl text-sm leading-relaxed text-ink-soft">
+          Click <span className="font-semibold text-ink">Generate insights</span> and watch the two agents
+          work live — the insight-finder proposes findings, then an independent critic vets each one before
+          it appears.
         </p>
       )}
     </section>

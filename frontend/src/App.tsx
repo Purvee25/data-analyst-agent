@@ -49,35 +49,31 @@ export default function App() {
   return (
     <div className="app-bg min-h-full">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-white/5 bg-slate-950/60 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-line bg-paper/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-sm font-bold">
-              📊
+            <span className="grid h-8 w-8 place-items-center rounded-md bg-ink font-serif text-base font-medium text-paper">
+              A
             </span>
-            <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-100">Autonomous Data Analyst</p>
-              <p className="text-xs text-slate-500">{session.filename}</p>
+            <div className="flex items-baseline gap-3">
+              <p className="font-serif text-lg font-medium text-ink">Autonomous Data Analyst</p>
+              <p className="hidden text-xs text-ink-faint sm:block">{session.filename}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
             {health && (
               <span
                 title={health.engine_label}
-                className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs sm:inline-flex ${
-                  health.is_local
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                    : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300"
-                }`}
+                className="hidden items-center gap-1.5 text-xs text-ink-soft sm:inline-flex"
               >
-                <span className={`h-1.5 w-1.5 rounded-full ${health.is_local ? "bg-emerald-400" : "bg-indigo-400"}`} />
+                <span className={`h-1.5 w-1.5 rounded-full ${health.is_local ? "bg-approve" : "bg-accent"}`} />
                 {health.is_local ? "Local · free" : "Claude"}
               </span>
             )}
-            <div className="text-right">
-              <p className="text-xs text-slate-500">AI requests</p>
-              <p className="text-sm font-semibold text-slate-200">
-                {used} <span className="text-slate-500">/ {max}</span>
+            <div className="text-right leading-tight">
+              <p className="kicker">Requests</p>
+              <p className="text-sm font-semibold text-ink">
+                {used} <span className="text-ink-faint">/ {max}</span>
               </p>
             </div>
             <button
@@ -85,7 +81,7 @@ export default function App() {
                 setSession(null);
                 setUsed(0);
               }}
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:border-white/20"
+              className="rounded-md border border-ink/20 px-3 py-1.5 text-xs font-medium text-ink transition hover:border-ink hover:bg-ink/[0.03]"
             >
               New dataset
             </button>
@@ -93,17 +89,18 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-8 px-6 py-8">
-        <div className="animate-fade-up">
-          <h1 className="text-2xl font-bold text-slate-50">
-            {session.rows.toLocaleString()} rows × {session.cols} columns
-            <span className="ml-2 text-base font-normal text-slate-500">cleaned & ready</span>
+      <main className="mx-auto max-w-6xl space-y-10 px-6 py-10">
+        <div className="animate-fade-up border-b border-line pb-6">
+          <p className="kicker accent-mark mb-2">Dataset · cleaned &amp; ready</p>
+          <h1 className="font-serif text-4xl font-medium tracking-tight text-ink">
+            {session.rows.toLocaleString()} <span className="text-ink-faint">rows</span> ×{" "}
+            {session.cols} <span className="text-ink-faint">columns</span>
           </h1>
         </div>
 
         <DataQuality report={session.quality} />
 
-        <Section title="👀 Preview (first 20 rows)">
+        <Section title="Preview — first 20 rows">
           <PreviewTable preview={session.preview} />
         </Section>
 
@@ -122,13 +119,13 @@ export default function App() {
           }}
         />
 
-        <Section title="📈 Agent metrics">
+        <Section title="Agent metrics">
           <MetricsPanel refreshKey={metricsKey} />
         </Section>
 
-        <footer className="pt-4 text-center text-xs text-slate-600">
+        <footer className="border-t border-line pt-6 text-center text-xs text-ink-faint">
           Cleaning runs locally · insights use two independent {health ? `${health.call_noun}s` : "model calls"}
-          {health?.is_local ? ` (${health.engine_label})` : ""} · every request is validated, rate-limited & logged.
+          {health?.is_local ? ` (${health.engine_label})` : ""} · every request is validated, rate-limited &amp; logged.
         </footer>
       </main>
     </div>

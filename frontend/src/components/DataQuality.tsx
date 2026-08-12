@@ -7,10 +7,11 @@ import type { QualityReport } from "../types";
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="card p-4">
-      <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-slate-50">{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
+    <div className="card card-lift relative overflow-hidden p-5">
+      <span className="absolute inset-x-0 top-0 h-[3px] bg-accent/70" />
+      <p className="kicker">{label}</p>
+      <p className="mt-2 font-serif text-[2.5rem] font-medium leading-none tabular-nums text-ink">{value}</p>
+      {hint && <p className="mt-1.5 text-xs text-ink-faint">{hint}</p>}
     </div>
   );
 }
@@ -19,14 +20,14 @@ function Chips({ title, items, tone }: { title: string; items: string[]; tone: "
   if (items.length === 0) return null;
   const cls =
     tone === "fix"
-      ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/20"
-      : "bg-amber-500/10 text-amber-300 ring-amber-500/20";
+      ? "border-approve/25 bg-approve/[0.06] text-approve"
+      : "border-downgrade/30 bg-downgrade/[0.07] text-downgrade";
   return (
     <div>
-      <p className="mb-2 text-sm font-semibold text-slate-300">{title}</p>
+      <p className="kicker mb-2.5">{title}</p>
       <div className="flex flex-wrap gap-2">
         {items.map((it) => (
-          <span key={it} className={`rounded-lg px-2.5 py-1 text-xs ring-1 ${cls}`}>
+          <span key={it} className={`rounded border px-2.5 py-1 text-xs ${cls}`}>
             {it}
           </span>
         ))}
@@ -63,14 +64,16 @@ export default function DataQuality({ report }: { report: QualityReport }) {
         />
       </div>
 
-      <div className="card space-y-4 p-5">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <span className="rounded-md bg-white/5 px-2 py-0.5">Encoding: {report.encoding_used}</span>
+      <div className="card space-y-5 p-6">
+        <div className="flex items-center gap-2">
+          <span className="rounded border border-line bg-ink/[0.03] px-2 py-0.5 text-xs text-ink-soft">
+            Encoding: {report.encoding_used}
+          </span>
         </div>
         <Chips title="Fixed automatically" items={fixes} tone="fix" />
         <Chips title="Flagged for review (not altered)" items={flags} tone="flag" />
         {fixes.length === 0 && flags.length === 0 && (
-          <p className="text-sm text-slate-400">No significant data-quality issues detected.</p>
+          <p className="text-sm text-ink-soft">No significant data-quality issues detected.</p>
         )}
       </div>
     </section>

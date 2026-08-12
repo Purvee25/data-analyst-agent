@@ -1,4 +1,4 @@
-// First screen: hero + choose a data source (demo dataset or upload a CSV).
+// First screen: editorial hero + choose a data source (demo dataset or upload).
 
 import { useRef, useState } from "react";
 import { loadDemo, uploadCsv, type Health } from "../api";
@@ -8,10 +8,10 @@ import type { Session } from "../types";
 // calls go to Ollama. Build the feature copy from the active engine's noun.
 function features(callNoun: string) {
   return [
-    { icon: "🧹", title: "Auto-clean", text: "Fixes dates, currency text, duplicates & encodings with an auditable report." },
-    { icon: "🔍", title: "Proactive insights", text: `Finds 3–5 patterns unprompted — no question needed (${callNoun} #1).` },
-    { icon: "🧠", title: "Self-critique", text: `A second, independent AI reviews each finding for validity (${callNoun} #2).` },
-    { icon: "📈", title: "Ask anything", text: "Plain-English Q&A with memory and auto-generated charts." },
+    { title: "Auto-clean", text: "Fixes dates, currency text, duplicates and encodings — with an auditable report of every change." },
+    { title: "Proactive insights", text: `Finds 3–5 patterns unprompted, no question needed (${callNoun} #1).` },
+    { title: "Self-critique", text: `A second, independent model reviews each finding for statistical validity (${callNoun} #2).` },
+    { title: "Ask anything", text: "Plain-English follow-ups with session memory and auto-generated charts." },
   ];
 }
 
@@ -38,73 +38,81 @@ export default function Landing({ onReady, health }: { onReady: (s: Session) => 
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-16 text-center">
-      <div className="animate-fade-up">
-        <span
-          title={health?.engine_label}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300"
-        >
-          <span className={`h-1.5 w-1.5 rounded-full ${isLocal ? "bg-emerald-400" : "bg-indigo-400"}`} />
-          {badgeLabel} · two-agent pipeline
+    <div className="mx-auto max-w-5xl px-6 py-20 sm:py-28">
+      {/* Masthead rule + eyebrow */}
+      <div className="flex items-center justify-between border-b border-line pb-3">
+        <span className="kicker">Autonomous Data Analyst</span>
+        <span title={health?.engine_label} className="inline-flex items-center gap-2 text-[11px] text-ink-faint">
+          <span className={`h-1.5 w-1.5 rounded-full ${isLocal ? "bg-approve" : "bg-accent"}`} />
+          {badgeLabel}
         </span>
-        <h1 className="mt-6 bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent sm:text-5xl">
-          Autonomous Data Analyst
+      </div>
+
+      {/* Hero */}
+      <div className="animate-fade-up pt-12">
+        <span className="mb-6 block h-[3px] w-16 bg-accent" />
+        <h1 className="max-w-3xl font-serif text-5xl font-medium leading-[1.05] tracking-tight text-ink sm:text-7xl">
+          A <span className="italic text-accent">junior analyst</span> for your messiest spreadsheets.
         </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-slate-400">
-          Drop in a messy CSV and get a junior analyst that cleans it, proactively finds insights,
-          critiques its own findings for statistical validity, and answers your questions with charts.
+        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft">
+          Drop in a CSV. It cleans the data, proactively surfaces patterns, critiques its own
+          findings for statistical validity, and answers your questions with charts.
         </p>
+
+        <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button
+            onClick={() => run("demo")}
+            disabled={loading !== null}
+            className="rounded-md bg-ink px-6 py-3 text-sm font-semibold text-paper transition hover:bg-black disabled:opacity-50"
+          >
+            {loading === "demo" ? "Loading…" : "Try the Superstore demo"}
+          </button>
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={loading !== null}
+            className="rounded-md border border-ink/25 px-6 py-3 text-sm font-semibold text-ink transition hover:border-ink hover:bg-ink/[0.03] disabled:opacity-50"
+          >
+            {loading === "upload" ? "Uploading…" : "Upload a CSV (≤ 5 MB)"}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) run("upload", f);
+              e.target.value = "";
+            }}
+          />
+        </div>
+
+        {health && !health.ready && (
+          <div className="mt-6 max-w-xl border-l-2 border-downgrade bg-downgrade/[0.06] px-4 py-3 text-sm text-ink-soft">
+            <span className="font-semibold text-ink">Claude backend selected but no API key is set.</span>{" "}
+            Set <code className="rounded bg-ink/[0.06] px-1">ANTHROPIC_API_KEY</code>, or run for free with{" "}
+            <code className="rounded bg-ink/[0.06] px-1">LLM_PROVIDER=ollama</code>.
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-6 max-w-xl border-l-2 border-accent bg-accent-soft px-4 py-3 text-sm text-accent-ink">
+            {error}
+          </div>
+        )}
       </div>
 
-      {health && !health.ready && (
-        <div className="mx-auto mt-6 max-w-lg rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          <span className="font-semibold">Claude backend selected but no API key is set.</span> Set{" "}
-          <code className="rounded bg-black/30 px-1">ANTHROPIC_API_KEY</code>, or run for free with{" "}
-          <code className="rounded bg-black/30 px-1">LLM_PROVIDER=ollama</code>. You can still load a
-          dataset and see the cleaning report — only the AI steps need the backend.
-        </div>
-      )}
-
-      <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <button
-          onClick={() => run("demo")}
-          disabled={loading !== null}
-          className="w-full rounded-xl bg-indigo-500 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-400 disabled:opacity-50 sm:w-auto"
-        >
-          {loading === "demo" ? "Loading…" : "Try the Superstore demo"}
-        </button>
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={loading !== null}
-          className="w-full rounded-xl border border-white/15 bg-white/5 px-6 py-3 font-semibold text-slate-200 transition hover:border-white/25 disabled:opacity-50 sm:w-auto"
-        >
-          {loading === "upload" ? "Uploading…" : "Upload a CSV (≤ 5 MB)"}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".csv"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) run("upload", f);
-            e.target.value = "";
-          }}
-        />
-      </div>
-
-      {error && (
-        <div className="mx-auto mt-5 max-w-md rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-300">
-          {error}
-        </div>
-      )}
-
-      <div className="mt-14 grid grid-cols-1 gap-4 text-left sm:grid-cols-2">
+      {/* Feature ledger — numbered, hairline-separated, editorial */}
+      <div className="mt-20 border-t border-line">
         {FEATURES.map((f, i) => (
-          <div key={f.title} className="card animate-fade-up p-5" style={{ animationDelay: `${i * 80}ms` }}>
-            <div className="text-2xl">{f.icon}</div>
-            <h3 className="mt-2 font-semibold text-slate-100">{f.title}</h3>
-            <p className="mt-1 text-sm text-slate-400">{f.text}</p>
+          <div
+            key={f.title}
+            className="animate-fade-up grid grid-cols-[auto_1fr] items-baseline gap-x-6 gap-y-1 border-b border-line py-6 sm:grid-cols-[3rem_14rem_1fr]"
+            style={{ animationDelay: `${i * 70}ms` }}
+          >
+            <span className="font-serif text-lg text-ink-faint">{String(i + 1).padStart(2, "0")}</span>
+            <h3 className="text-base font-semibold text-ink">{f.title}</h3>
+            <p className="col-span-2 text-sm leading-relaxed text-ink-soft sm:col-span-1">{f.text}</p>
           </div>
         ))}
       </div>

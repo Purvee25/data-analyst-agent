@@ -52,8 +52,11 @@ export default function QAPanel({
   }
 
   return (
-    <div className="card flex flex-col p-5">
-      <h3 className="mb-3 text-lg font-semibold text-slate-100">💬 Ask a follow-up</h3>
+    <div className="card flex flex-col p-6">
+      <div className="mb-4 border-b border-line pb-3">
+        <p className="kicker accent-mark mb-1">Conversational Q&amp;A</p>
+        <h3 className="font-serif text-2xl font-medium text-ink">Ask a follow-up</h3>
+      </div>
 
       <div ref={scrollRef} className="mb-3 max-h-[26rem] space-y-3 overflow-y-auto pr-1">
         {turns.length === 0 && (
@@ -62,7 +65,7 @@ export default function QAPanel({
               <button
                 key={s}
                 onClick={() => send(s)}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition hover:border-indigo-400/40 hover:text-white"
+                className="rounded-md border border-line px-3 py-1.5 text-xs text-ink-soft transition hover:border-ink hover:text-ink"
               >
                 {s}
               </button>
@@ -73,13 +76,13 @@ export default function QAPanel({
         {turns.map((t, i) =>
           t.role === "user" ? (
             <div key={i} className="flex justify-end">
-              <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-indigo-500/90 px-4 py-2 text-sm text-white">
+              <div className="max-w-[85%] rounded-lg rounded-br-sm bg-ink px-4 py-2 text-sm text-paper">
                 {t.text}
               </div>
             </div>
           ) : (
             <div key={i} className="flex flex-col">
-              <div className="max-w-[92%] rounded-2xl rounded-bl-sm bg-white/5 px-4 py-2.5 text-sm leading-relaxed text-slate-200">
+              <div className="max-w-[92%] rounded-lg rounded-bl-sm border border-line bg-paper px-4 py-2.5 text-sm leading-relaxed text-ink">
                 {i === turns.length - 1 ? <TypedText text={t.text} /> : t.text}
               </div>
               {t.chart && <Chart data={t.chart} />}
@@ -88,15 +91,15 @@ export default function QAPanel({
         )}
 
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-400" />
+          <div className="flex items-center gap-2 text-sm text-ink-soft">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
             Analyzing…
           </div>
         )}
       </div>
 
       {error && (
-        <div className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+        <div className="mb-3 border-l-2 border-accent bg-accent-soft px-3 py-2 text-sm text-accent-ink">
           {error}
         </div>
       )}
@@ -112,12 +115,12 @@ export default function QAPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="e.g. Which sub-category loses the most money?"
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400/50 focus:outline-none"
+          className="flex-1 rounded-md border border-line bg-paper px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-ink focus:outline-none"
         />
         <button
           type="submit"
           disabled={loading || !input.trim()}
-          className="rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-paper transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
         >
           Ask
         </button>

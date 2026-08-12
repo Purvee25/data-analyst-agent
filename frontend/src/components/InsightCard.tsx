@@ -7,21 +7,21 @@ import { emailInsight } from "../api";
 import type { Category, Insight, Verdict } from "../types";
 
 const CATEGORY_STYLE: Record<Category, string> = {
-  trend: "bg-sky-500/15 text-sky-300 ring-sky-500/30",
-  anomaly: "bg-rose-500/15 text-rose-300 ring-rose-500/30",
-  comparison: "bg-violet-500/15 text-violet-300 ring-violet-500/30",
-  correlation: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
+  trend: "text-ink-soft",
+  anomaly: "text-accent",
+  comparison: "text-ink-soft",
+  correlation: "text-ink-soft",
 };
 
 const VERDICT_STYLE: Record<Verdict, { label: string; cls: string }> = {
-  approve: { label: "✓ Approved", cls: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30" },
-  downgrade: { label: "▾ Downgraded", cls: "bg-amber-500/15 text-amber-300 ring-amber-500/30" },
+  approve: { label: "Approved", cls: "text-approve" },
+  downgrade: { label: "Downgraded", cls: "text-downgrade" },
 };
 
 function confColor(c: number): string {
-  if (c >= 0.7) return "bg-emerald-400";
-  if (c >= 0.4) return "bg-amber-400";
-  return "bg-rose-400";
+  if (c >= 0.7) return "bg-approve";
+  if (c >= 0.4) return "bg-downgrade";
+  return "bg-accent";
 }
 
 type EmailState =
@@ -58,34 +58,31 @@ export default function InsightCard({
 
   return (
     <div
-      className="card animate-fade-up p-5"
+      className="card card-lift animate-fade-up p-6"
       style={{ animationDelay: `${index * 80}ms` }}
     >
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ring-1 ${CATEGORY_STYLE[insight.category]}`}
-        >
-          {insight.category}
-        </span>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${verdict.cls}`}>
+      <div className="mb-3 flex items-center justify-between">
+        <span className={`kicker ${CATEGORY_STYLE[insight.category]}`}>{insight.category}</span>
+        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${verdict.cls}`}>
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
           {verdict.label}
         </span>
       </div>
 
-      <p className="text-[15px] font-medium leading-relaxed text-slate-100">{insight.insight}</p>
+      <p className="font-serif text-lg font-medium leading-snug text-ink">{insight.insight}</p>
 
-      <p className="mt-2 text-sm text-slate-400">
-        <span className="font-semibold text-slate-300">Supporting data: </span>
+      <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+        <span className="font-semibold text-ink">Supporting data — </span>
         {insight.supporting_data}
       </p>
 
       {/* Confidence meter */}
-      <div className="mt-4">
-        <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
-          <span>Confidence</span>
-          <span className="font-semibold text-slate-200">{pct}%</span>
+      <div className="mt-5">
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="kicker">Confidence</span>
+          <span className="text-sm font-semibold tabular-nums text-ink">{pct}%</span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.06]">
           <div
             className={`h-full rounded-full ${confColor(insight.confidence)} transition-all duration-700`}
             style={{ width: `${pct}%` }}
@@ -94,29 +91,29 @@ export default function InsightCard({
       </div>
 
       {/* Critic reasoning */}
-      <div className="mt-4 rounded-lg border-l-2 border-slate-600 bg-white/[0.02] px-3 py-2">
-        <p className="text-xs leading-relaxed text-slate-400">
-          <span className="font-semibold text-slate-300">Critic&apos;s review: </span>
+      <div className="mt-5 border-l-2 border-line-strong pl-3">
+        <p className="text-sm leading-relaxed text-ink-soft">
+          <span className="font-semibold text-ink">Critic&apos;s review — </span>
           {insight.critic_reasoning}
         </p>
       </div>
 
       {/* Real-world action (USP #4): human-confirmed email via the local MCP server. */}
-      <div className="mt-4 border-t border-white/5 pt-3">
+      <div className="mt-5 border-t border-line pt-4">
         {email.kind === "sent" ? (
-          <p className="text-xs text-emerald-300">✓ {email.message}</p>
+          <p className="text-xs font-medium text-approve">✓ {email.message}</p>
         ) : email.kind === "confirming" ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-slate-400">Send this insight as an email alert?</span>
+            <span className="text-xs text-ink-soft">Send this insight as an email alert?</span>
             <button
               onClick={confirmSend}
-              className="rounded-lg bg-emerald-500/90 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-400"
+              className="rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-paper transition hover:bg-black"
             >
               Confirm send
             </button>
             <button
               onClick={() => setEmail({ kind: "idle" })}
-              className="rounded-lg border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:border-white/20"
+              className="rounded-md border border-ink/20 px-3 py-1.5 text-xs text-ink transition hover:border-ink"
             >
               Cancel
             </button>
@@ -127,14 +124,12 @@ export default function InsightCard({
               onClick={() => setEmail({ kind: "confirming" })}
               disabled={!emailConfigured || email.kind === "sending"}
               title={emailConfigured ? undefined : "SMTP not configured on the server"}
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 transition hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-md border border-ink/20 px-3 py-1.5 text-xs font-medium text-ink transition hover:border-ink hover:bg-ink/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {email.kind === "sending" ? "Sending…" : "📧 Email this insight"}
+              {email.kind === "sending" ? "Sending…" : "Email this insight"}
             </button>
-            {!emailConfigured && (
-              <span className="text-xs text-slate-600">Set SMTP env vars to enable</span>
-            )}
-            {email.kind === "error" && <span className="text-xs text-rose-400">{email.message}</span>}
+            {!emailConfigured && <span className="text-xs text-ink-faint">Set SMTP env vars to enable</span>}
+            {email.kind === "error" && <span className="text-xs text-accent">{email.message}</span>}
           </div>
         )}
       </div>

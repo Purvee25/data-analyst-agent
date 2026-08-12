@@ -3,7 +3,16 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+  /* Light editorial palette — warm paper, ink text, one restrained accent. */
+  --paper: #faf8f3;
+  --surface: #ffffff;
+  --ink: #1c1b18;
+  --ink-soft: #57534b;
+  --ink-faint: #8a857a;
+  --line: #e6e2d8;
+  --line-strong: #d7d2c5;
+  --accent: #9a3412; /* burnt sienna */
 }
 
 html,
@@ -14,26 +23,72 @@ body,
 
 body {
   margin: 0;
-  background: #0b1120;
-  color: #e2e8f0;
+  background: var(--paper);
+  color: var(--ink);
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Ambient gradient backdrop for the whole app. */
+::selection {
+  background: rgba(154, 52, 18, 0.14);
+}
+
+/* Flat paper backdrop — no gradients, no glass. A single hairline-thin ruled
+   texture at the very top gives an editorial "printed page" feel. */
 .app-bg {
-  background:
-    radial-gradient(60rem 40rem at 15% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
-    radial-gradient(50rem 40rem at 100% 0%, rgba(16, 185, 129, 0.12), transparent 55%),
-    #0b1120;
+  background: var(--paper);
 }
 
-/* Frosted card surface used across the dashboard. */
+/* Editorial card: solid paper-white, one hairline border, whisper shadow. */
 .card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1rem;
-  backdrop-filter: blur(8px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 1px 2px rgba(28, 27, 24, 0.04),
+    0 4px 16px -8px rgba(28, 27, 24, 0.06);
+}
+
+/* Cards that respond to hover with a gentle lift (insight cards, stat tiles). */
+.card-lift {
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.25s ease,
+    border-color 0.25s ease;
+}
+.card-lift:hover {
+  border-color: var(--line-strong);
+  box-shadow:
+    0 2px 4px rgba(28, 27, 24, 0.05),
+    0 12px 28px -12px rgba(28, 27, 24, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Small uppercase label — the editorial eyebrow/kicker. */
+.kicker {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+/* A short accent underscore used to punctuate section eyebrows. */
+.accent-mark::before {
+  content: "";
+  display: inline-block;
+  width: 1.25rem;
+  height: 2px;
+  margin-right: 0.6rem;
+  vertical-align: middle;
+  background: var(--accent);
+}
+
+/* Thin top hairline used to separate composed sections like newsprint rules. */
+.rule {
+  border: 0;
+  border-top: 1px solid var(--line);
 }
 
 /* Loading shimmer for skeletons. */
@@ -46,7 +101,7 @@ body {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.04), transparent);
   animation: shimmer 1.4s infinite;
 }
 @keyframes shimmer {
@@ -60,6 +115,6 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.14);
   border-radius: 999px;
 }
