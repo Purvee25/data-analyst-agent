@@ -28,7 +28,7 @@ export default function TypedText({ text, speed = 12 }: { text: string; speed?: 
   return (
     <span>
       {text.slice(0, count)}
-      {!done && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-indigo-300 align-middle" />}
+      {!done && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-accent align-middle" />}
     </span>
   );
 }

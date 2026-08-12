@@ -28,10 +28,10 @@ function Sparkline({ values }: { values: number[] }) {
         points={pts}
         fill="none"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="text-indigo-400"
+        className="text-accent"
         vectorEffect="non-scaling-stroke"
       />
     </svg>
@@ -40,9 +40,9 @@ function Sparkline({ values }: { values: number[] }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-0.5 text-lg font-semibold text-slate-100">{value}</p>
+    <div className="rounded-md border border-line px-4 py-3">
+      <p className="kicker">{label}</p>
+      <p className="mt-1 font-serif text-2xl font-medium tabular-nums text-ink">{value}</p>
     </div>
   );
 }
@@ -58,7 +58,7 @@ export default function MetricsPanel({ refreshKey }: { refreshKey: number }) {
 
   if (!m || m.total === 0) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-ink-soft">
         No requests logged yet — generate insights or ask a question and this panel populates from the
         structured request log.
       </p>
@@ -74,12 +74,12 @@ export default function MetricsPanel({ refreshKey }: { refreshKey: number }) {
         <Stat label="Avg confidence" value={m.avg_confidence != null ? m.avg_confidence.toFixed(2) : "—"} />
       </div>
       {m.confidence_series.length >= 2 && (
-        <div className="mt-4 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
-          <p className="text-xs text-slate-500">Confidence trend (recent insights)</p>
+        <div className="mt-4 rounded-md border border-line px-4 py-3">
+          <p className="kicker">Confidence trend — recent insights</p>
           <Sparkline values={m.confidence_series} />
         </div>
       )}
-      <p className="mt-3 text-xs text-slate-600">
+      <p className="mt-3 text-xs text-ink-faint">
         Computed from the structured request log (logs/requests.csv) — logging is the basis for a real
         accuracy metric, not an afterthought.
       </p>

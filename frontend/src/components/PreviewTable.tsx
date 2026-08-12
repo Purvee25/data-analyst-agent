@@ -4,15 +4,15 @@ import type { Preview } from "../types";
 
 export default function PreviewTable({ preview }: { preview: Preview }) {
   return (
-    <div className="card overflow-hidden">
+    <div className="overflow-hidden rounded-md border border-line">
       <div className="max-h-80 overflow-auto">
         <table className="w-full border-collapse text-left text-sm">
-          <thead className="sticky top-0 bg-slate-900/95 backdrop-blur">
+          <thead className="sticky top-0 bg-paper">
             <tr>
               {preview.columns.map((c) => (
                 <th
                   key={c}
-                  className="whitespace-nowrap border-b border-white/10 px-3 py-2 font-semibold text-slate-300"
+                  className="kicker whitespace-nowrap border-b border-line px-3 py-2.5"
                 >
                   {c}
                 </th>
@@ -21,11 +21,11 @@ export default function PreviewTable({ preview }: { preview: Preview }) {
           </thead>
           <tbody>
             {preview.rows.map((row, i) => (
-              <tr key={i} className="odd:bg-white/[0.015] hover:bg-white/[0.04]">
+              <tr key={i} className="border-b border-line/60 last:border-0 hover:bg-ink/[0.02]">
                 {preview.columns.map((c) => (
-                  <td key={c} className="whitespace-nowrap px-3 py-1.5 text-slate-400">
+                  <td key={c} className="whitespace-nowrap px-3 py-2 tabular-nums text-ink-soft">
                     {row[c] === null || row[c] === undefined ? (
-                      <span className="text-slate-600">—</span>
+                      <span className="text-ink-faint">—</span>
                     ) : (
                       String(row[c])
                     )}
