@@ -16,23 +16,31 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
-function Chips({ title, items, tone }: { title: string; items: string[]; tone: "fix" | "flag" }) {
+// A quiet one-line summary ("8 fixes applied") that expands to the full chip
+// list on demand — keeps the dense detail available without paying for it up
+// front. Uses a native <details> disclosure (accessible, no extra state).
+function Disclosure({ label, items, tone }: { label: string; items: string[]; tone: "fix" | "flag" }) {
   if (items.length === 0) return null;
   const cls =
     tone === "fix"
       ? "border-approve/25 bg-approve/[0.06] text-approve"
       : "border-downgrade/30 bg-downgrade/[0.07] text-downgrade";
+  const dot = tone === "fix" ? "bg-approve" : "bg-downgrade";
   return (
-    <div>
-      <p className="kicker mb-2.5">{title}</p>
-      <div className="flex flex-wrap gap-2">
+    <details className="group">
+      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-ink-soft">
+        <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+        <span className="font-semibold text-ink">{items.length}</span> {label}
+        <span className="text-ink-faint transition-transform group-open:rotate-90">›</span>
+      </summary>
+      <div className="mt-3 flex flex-wrap gap-2">
         {items.map((it) => (
           <span key={it} className={`rounded border px-2.5 py-1 text-xs ${cls}`}>
             {it}
           </span>
         ))}
       </div>
-    </div>
+    </details>
   );
 }
 
@@ -64,14 +72,10 @@ export default function DataQuality({ report }: { report: QualityReport }) {
         />
       </div>
 
-      <div className="card space-y-5 p-6">
-        <div className="flex items-center gap-2">
-          <span className="rounded border border-line bg-ink/[0.03] px-2 py-0.5 text-xs text-ink-soft">
-            Encoding: {report.encoding_used}
-          </span>
-        </div>
-        <Chips title="Fixed automatically" items={fixes} tone="fix" />
-        <Chips title="Flagged for review (not altered)" items={flags} tone="flag" />
+      <div className="card flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4">
+        <span className="kicker">Cleaning · {report.encoding_used}</span>
+        <Disclosure label="fixes applied" items={fixes} tone="fix" />
+        <Disclosure label="flagged for review" items={flags} tone="flag" />
         {fixes.length === 0 && flags.length === 0 && (
           <p className="text-sm text-ink-soft">No significant data-quality issues detected.</p>
         )}

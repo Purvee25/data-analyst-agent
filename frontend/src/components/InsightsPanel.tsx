@@ -136,10 +136,8 @@ export default function InsightsPanel({
       )}
 
       {!ran && (
-        <p className="max-w-2xl text-sm leading-relaxed text-ink-soft">
-          Click <span className="font-semibold text-ink">Generate insights</span> and watch the two agents
-          work live — the insight-finder proposes findings, then an independent critic vets each one before
-          it appears.
+        <p className="text-sm text-ink-soft">
+          Insight-finder proposes findings; an independent critic vets each before it appears.
         </p>
       )}
     </section>

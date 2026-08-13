@@ -79,10 +79,6 @@ export default function MetricsPanel({ refreshKey }: { refreshKey: number }) {
           <Sparkline values={m.confidence_series} />
         </div>
       )}
-      <p className="mt-3 text-xs text-ink-faint">
-        Computed from the structured request log (logs/requests.csv) — logging is the basis for a real
-        accuracy metric, not an afterthought.
-      </p>
     </div>
   );
 }
