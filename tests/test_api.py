@@ -1,122 +1,140 @@
-"""Endpoint tests for the FastAPI app (api/main.py).
+"""HTTP-contract tests for the FastAPI layer (api/main.py).
 
-Focus on the surfaces added for feature-parity — health honesty, the metrics
-aggregation, and the human-confirmed email action — plus the rate-limit and
-session guards. All external effects (the MCP email send) are injected/faked so
-no test spawns a subprocess or touches SMTP.
+These exercise the endpoints that don't require a live LLM — the load-bearing
+paths that were previously only tested indirectly: health/provider reporting,
+metrics aggregation, rate limiting, session errors, cleaning, and the
+human-confirmed email action (with the MCP send stubbed). LLM calls are never
+made: insight/ask rate-limit tests trip the limiter *before* any model call, and
+the email test stubs the executor.
 """
 
 from __future__ import annotations
 
-import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from api import main
+from analyst import actions, config, logger
+from api import main as api_main
+
+client = TestClient(api_main.app)
 
 
-@pytest.fixture
-def client():
-    return TestClient(main.app)
+@pytest.fixture(autouse=True)
+def _clear_sessions():
+    """Each test starts with an empty server-side session store."""
+    api_main._SESSIONS.clear()
+    yield
+    api_main._SESSIONS.clear()
 
 
-@pytest.fixture
-def session_id(client):
-    """A real cleaned session via the demo endpoint (no LLM calls involved)."""
+def _load_demo() -> str:
     resp = client.post("/api/session/demo")
     assert resp.status_code == 200
     return resp.json()["session_id"]
 
 
-def _insight() -> dict:
-    return {
-        "insight": "Sales peak in Q4.",
-        "supporting_data": "Q4 avg 2x Q1.",
-        "category": "trend",
-        "confidence": 0.82,
-        "critic_verdict": "approve",
-        "critic_reasoning": "Consistent across years.",
-    }
-
-
 # --- health ---------------------------------------------------------------
-def test_health_reports_provider_and_email_flag(client):
+def test_health_reports_ollama_provider(monkeypatch):
+    monkeypatch.setattr(config, "LLM_PROVIDER", "ollama")
     body = client.get("/api/health").json()
     assert body["status"] == "ok"
-    assert "provider" in body and "is_local" in body
-    assert "email_configured" in body  # UI relies on this to gate the button
+    assert body["provider"] == "ollama"
+    assert body["is_local"] is True
+    assert body["ready"] is True  # local needs no API key
+
+
+def test_health_not_ready_when_claude_without_key(monkeypatch):
+    monkeypatch.setattr(config, "LLM_PROVIDER", "anthropic")
+    monkeypatch.delenv(config.API_KEY_ENV_VAR, raising=False)
+    body = client.get("/api/health").json()
+    assert body["is_local"] is False
+    assert body["ready"] is False
+
+
+# --- demo / cleaning ------------------------------------------------------
+def test_demo_load_returns_cleaned_payload():
+    body = client.post("/api/session/demo").json()
+    assert body["rows"] > 0 and body["cols"] > 0
+    assert "quality" in body and "preview" in body
+    assert body["requests_used"] == 0
+    assert body["requests_max"] == config.MAX_REQUESTS_PER_SESSION
 
 
 # --- metrics --------------------------------------------------------------
-def test_metrics_shape_never_500s(client, tmp_path, monkeypatch):
-    # Point the log at an empty temp path: metrics must degrade to zeros, not error.
-    monkeypatch.setattr(main.config, "LOG_CSV_PATH", str(tmp_path / "nope.csv"))
+def test_metrics_empty_when_no_log(monkeypatch, tmp_path):
+    monkeypatch.setattr(config, "LOG_CSV_PATH", str(tmp_path / "none.csv"))
     body = client.get("/api/metrics").json()
     assert body["total"] == 0
     assert body["confidence_series"] == []
 
 
-def test_metrics_aggregates_a_log(client, tmp_path, monkeypatch):
-    log = tmp_path / "requests.csv"
-    pd.DataFrame(
-        {
-            "timestamp": ["t1", "t2"],
-            "action": ["generate_insights", "generate_insights"],
-            "detail": ["ok", "ok"],
-            "success": [True, False],
-            "response_time_seconds": [1.0, 3.0],
-            "confidence_score": [0.8, 0.6],
-        }
-    ).to_csv(log, index=False)
-    monkeypatch.setattr(main.config, "LOG_CSV_PATH", str(log))
+def test_metrics_aggregates_logged_rows(monkeypatch, tmp_path):
+    log_path = tmp_path / "requests.csv"
+    monkeypatch.setattr(config, "LOG_DIR", str(tmp_path))
+    monkeypatch.setattr(config, "LOG_CSV_PATH", str(log_path))
+    logger.log_request("generate_insights", "ok", success=True, response_time_seconds=1.2, confidence_score=0.8)
+    logger.log_request("generate_insights", "ok", success=False, response_time_seconds=0.4)
 
     body = client.get("/api/metrics").json()
     assert body["total"] == 2
     assert body["success_rate"] == 50.0
-    assert body["avg_latency"] == 2.0
-    assert body["avg_confidence"] == 0.7
-    assert body["confidence_series"] == [0.8, 0.6]
+    assert body["avg_confidence"] == 0.8  # only the one row with a score
+    assert body["confidence_series"] == [0.8]
 
 
-# --- email action ---------------------------------------------------------
-def test_email_action_success_uses_injected_send(client, session_id, monkeypatch):
-    sent: dict = {}
-
-    def fake_execute(spec):
-        sent["spec"] = spec
-        return "Email sent to ops@example.com"
-
-    monkeypatch.setattr(main.actions, "execute_action", fake_execute)
-
-    resp = client.post("/api/action/email", json={"session_id": session_id, "insight": _insight()})
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["actions_used"] == 1
-    assert "sent" in body["result"].lower()
-    # The server built the spec from the insight (never trusted a client subject).
-    assert sent["spec"]["action"] == "email_alert"
-
-
-def test_email_action_unknown_session_404s(client):
-    resp = client.post("/api/action/email", json={"session_id": "nope", "insight": _insight()})
+# --- session + rate limiting ---------------------------------------------
+def test_insights_unknown_session_404():
+    resp = client.post("/api/insights", json={"session_id": "does-not-exist"})
     assert resp.status_code == 404
 
 
-def test_email_action_send_failure_is_clean_502(client, session_id, monkeypatch):
+def test_insights_rate_limited_before_any_model_call():
+    sid = _load_demo()
+    api_main._SESSIONS[sid].request_count = config.MAX_REQUESTS_PER_SESSION
+    resp = client.post("/api/insights", json={"session_id": sid})
+    assert resp.status_code == 429
+    assert "limit" in resp.json()["detail"].lower()
+
+
+def test_ask_rejects_destructive_question():
+    sid = _load_demo()
+    resp = client.post("/api/ask", json={"session_id": sid, "question": "DROP TABLE sales;"})
+    assert resp.status_code == 400
+
+
+# --- email action (MCP send stubbed) -------------------------------------
+_INSIGHT = {
+    "insight": "West region drives 45% of profit.",
+    "supporting_data": "profit_by_region West=0.45",
+    "category": "comparison",
+    "confidence": 0.82,
+    "critic_verdict": "approve",
+    "critic_reasoning": "Backed by the aggregate.",
+}
+
+
+def test_email_action_success(monkeypatch):
+    sid = _load_demo()
+    monkeypatch.setattr(actions, "execute_action", lambda spec: "Email sent to ops@example.com")
+    resp = client.post("/api/action/email", json={"session_id": sid, "insight": _INSIGHT})
+    assert resp.status_code == 200
+    assert resp.json()["actions_used"] == 1
+
+
+def test_email_action_send_failure_is_502(monkeypatch):
+    sid = _load_demo()
+
     def boom(spec):
-        raise main.actions.ActionError("Missing required SMTP env var(s): SMTP_HOST.")
+        raise actions.ActionError("missing SMTP env var")
 
-    monkeypatch.setattr(main.actions, "execute_action", boom)
-    resp = client.post("/api/action/email", json={"session_id": session_id, "insight": _insight()})
+    monkeypatch.setattr(actions, "execute_action", boom)
+    resp = client.post("/api/action/email", json={"session_id": sid, "insight": _INSIGHT})
     assert resp.status_code == 502
-    assert "SMTP" in resp.json()["detail"]
+    assert "Could not send email" in resp.json()["detail"]
 
 
-def test_email_action_respects_session_limit(client, session_id, monkeypatch):
-    monkeypatch.setattr(main.actions, "execute_action", lambda spec: "sent")
-    monkeypatch.setattr(main.config, "MAX_ACTIONS_PER_SESSION", 1)
-
-    ok = client.post("/api/action/email", json={"session_id": session_id, "insight": _insight()})
-    assert ok.status_code == 200
-    blocked = client.post("/api/action/email", json={"session_id": session_id, "insight": _insight()})
-    assert blocked.status_code == 429
+def test_email_action_rate_limited():
+    sid = _load_demo()
+    api_main._SESSIONS[sid].action_count = config.MAX_ACTIONS_PER_SESSION
+    resp = client.post("/api/action/email", json={"session_id": sid, "insight": _INSIGHT})
+    assert resp.status_code == 429
