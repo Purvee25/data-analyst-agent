@@ -32,6 +32,7 @@ import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from analyst import actions, config
@@ -421,3 +422,18 @@ def insights_stream(session_id: str) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# --- Serve the built frontend (single-service deploy) ----------------------
+# In production we build the React app to frontend/dist and let this same
+# FastAPI process serve it, so the whole thing deploys as ONE service and the
+# browser calls /api/* same-origin (no CORS, no second host). In local dev the
+# dist folder doesn't exist and Vite serves the frontend instead, so this mount
+# is simply skipped. Mounted LAST so it never shadows the /api/* routes above.
+_FRONTEND_DIST = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist"
+)
+if os.path.isdir(_FRONTEND_DIST):
+    # html=True serves index.html at "/" — the app is a single page, so this is
+    # all the SPA routing it needs.
+    app.mount("/", StaticFiles(directory=_FRONTEND_DIST, html=True), name="spa")
