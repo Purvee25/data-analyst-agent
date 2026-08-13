@@ -68,6 +68,12 @@ class _Messages:
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self._api_key}",
+                # Groq sits behind Cloudflare, which blocks the default
+                # "Python-urllib/x.y" agent with error 1010 ("banned browser
+                # signature"). Send an explicit, ordinary User-Agent so the
+                # request looks like a normal API client and gets through.
+                "User-Agent": "autonomous-data-analyst/1.0 (+https://github.com/Purvee25/data-analyst-agent)",
+                "Accept": "application/json",
             },
             method="POST",
         )
