@@ -52,14 +52,24 @@ class _Messages:
         **_: object,
     ):
         """Mimic anthropic Messages.create against Groq's OpenAI-compatible API."""
+        system_content = system
+        response_format = None
+        if output_config:  # caller wants JSON — turn on Groq's JSON mode
+            response_format = {"type": "json_object"}
+            # Groq/OpenAI JSON mode rejects the request (400) unless the word
+            # "json" appears somewhere in the messages. Our schema-driven prompts
+            # don't always say it, so guarantee it in the system message.
+            if "json" not in system_content.lower():
+                system_content += "\n\nRespond with a single valid JSON object."
+
         payload: dict = {
             "model": self._model,
-            "messages": [{"role": "system", "content": system}, *messages],
+            "messages": [{"role": "system", "content": system_content}, *messages],
             "max_tokens": max_tokens,
             "temperature": 0,
         }
-        if output_config:  # caller wants JSON — turn on Groq's JSON mode
-            payload["response_format"] = {"type": "json_object"}
+        if response_format:
+            payload["response_format"] = response_format
 
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
