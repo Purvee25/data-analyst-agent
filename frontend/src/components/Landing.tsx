@@ -21,7 +21,7 @@ export default function Landing({ onReady, health }: { onReady: (s: Session) => 
   const fileRef = useRef<HTMLInputElement>(null);
 
   const badgeLabel = health?.label ?? "Powered by Claude";
-  const isLocal = health?.is_local ?? false;
+  const isFree = health?.is_free ?? false;
   const FEATURES = features(health?.call_noun ?? "Claude call");
 
   async function run(kind: "demo" | "upload", file?: File) {
@@ -43,7 +43,7 @@ export default function Landing({ onReady, health }: { onReady: (s: Session) => 
       <div className="flex items-center justify-between border-b border-line pb-3">
         <span className="kicker">Autonomous Data Analyst</span>
         <span title={health?.engine_label} className="inline-flex items-center gap-2 text-[11px] text-ink-faint">
-          <span className={`h-1.5 w-1.5 rounded-full ${isLocal ? "bg-approve" : "bg-accent"}`} />
+          <span className={`h-1.5 w-1.5 rounded-full ${isFree ? "bg-approve" : "bg-accent"}`} />
           {badgeLabel}
         </span>
       </div>

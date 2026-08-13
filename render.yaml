@@ -2,9 +2,11 @@
 # In the Render dashboard: New → Blueprint → point at this repo. Render reads
 # this file, builds the Dockerfile, and deploys a free web service.
 #
-# The only thing you must set yourself is the LLM secret (marked sync:false),
-# because a public deploy can't reach your local Ollama — it needs a hosted
-# model. Set ANTHROPIC_API_KEY in the dashboard to run on Claude.
+# A public deploy can't reach your local Ollama, so it runs on Groq — a FREE,
+# hosted, OpenAI-compatible model. The only thing you set yourself is the free
+# GROQ_API_KEY (marked sync:false) in the Render dashboard. Get one at
+# https://console.groq.com. To use Claude instead, switch LLM_PROVIDER to
+# "anthropic" and set ANTHROPIC_API_KEY.
 services:
   - type: web
     name: autonomous-data-analyst
@@ -13,6 +15,6 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: LLM_PROVIDER
-        value: anthropic
-      - key: ANTHROPIC_API_KEY
+        value: groq
+      - key: GROQ_API_KEY
         sync: false        # set this in the Render dashboard (never in git)

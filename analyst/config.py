@@ -38,6 +38,14 @@ OLLAMA_MODEL: str = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:7b")
 # Local models are slower than the API — give them room (seconds).
 OLLAMA_TIMEOUT: float = float(os.environ.get("OLLAMA_TIMEOUT", "180"))
 
+# Groq: a FREE, hosted, OpenAI-compatible backend. Unlike Ollama it runs in the
+# cloud, so it works on a public deploy where a local model can't. Selected with
+# LLM_PROVIDER=groq; needs a (free) GROQ_API_KEY. Same two-agent pipeline.
+GROQ_API_BASE: str = os.environ.get("GROQ_API_BASE", "https://api.groq.com/openai/v1")
+GROQ_MODEL: str = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_API_KEY_ENV: str = "GROQ_API_KEY"
+GROQ_TIMEOUT: float = float(os.environ.get("GROQ_TIMEOUT", "60"))
+
 
 def provider_info() -> dict:
     """Describe the LLM backend the pipeline is actually using right now.
@@ -48,17 +56,29 @@ def provider_info() -> dict:
     avoiding, especially when the whole point of the local path is that it's free.
     """
     is_local = LLM_PROVIDER == "ollama"
-    model = OLLAMA_MODEL if is_local else CLAUDE_MODEL
+    is_groq = LLM_PROVIDER == "groq"
+    if is_local:
+        model, label, engine_label, call_noun = (
+            OLLAMA_MODEL, "Running free on a local model", f"{OLLAMA_MODEL} · local & free", "local model call",
+        )
+    elif is_groq:
+        model, label, engine_label, call_noun = (
+            GROQ_MODEL, "Running free on Groq", f"{GROQ_MODEL} · Groq (free)", "Groq call",
+        )
+    else:
+        model, label, engine_label, call_noun = (
+            CLAUDE_MODEL, "Powered by Claude", f"Claude · {CLAUDE_MODEL}", "Claude call",
+        )
     return {
         "provider": LLM_PROVIDER,
         "model": model,
         "is_local": is_local,
-        # Short human labels the frontend can show verbatim.
-        "label": "Running free on a local model" if is_local else "Powered by Claude",
-        "engine_label": f"{model} · local & free" if is_local else f"Claude · {model}",
-        # Per-call vocabulary that adapts feature copy ("Claude call #1" is wrong
-        # when the call is going to a local model).
-        "call_noun": "local model call" if is_local else "Claude call",
+        # True for any no-cost backend (local Ollama or free Groq) — drives the
+        # green "free" treatment in the UI, distinct from paid Claude.
+        "is_free": is_local or is_groq,
+        "label": label,
+        "engine_label": engine_label,
+        "call_noun": call_noun,
     }
 
 # Separate, smaller token budgets per call keep latency and cost predictable.

@@ -32,3 +32,15 @@ def test_provider_info_ollama_reports_free_local(monkeypatch):
     assert "free" in info["label"].lower()
     assert "Claude" not in info["call_noun"]
     assert "qwen2.5-coder:7b" in info["engine_label"]
+    assert info["is_free"] is True
+
+
+def test_provider_info_groq_is_free_hosted(monkeypatch):
+    monkeypatch.setattr(config, "LLM_PROVIDER", "groq")
+    monkeypatch.setattr(config, "GROQ_MODEL", "llama-3.3-70b-versatile")
+    info = config.provider_info()
+    assert info["provider"] == "groq"
+    assert info["is_free"] is True
+    assert info["is_local"] is False  # hosted, not local
+    assert info["model"] == "llama-3.3-70b-versatile"
+    assert "Groq" in info["engine_label"]

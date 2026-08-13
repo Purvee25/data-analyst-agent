@@ -43,6 +43,19 @@ def test_health_reports_ollama_provider(monkeypatch):
     assert body["ready"] is True  # local needs no API key
 
 
+def test_health_groq_ready_depends_on_groq_key(monkeypatch):
+    monkeypatch.setattr(config, "LLM_PROVIDER", "groq")
+    monkeypatch.delenv(config.GROQ_API_KEY_ENV, raising=False)
+    body = client.get("/api/health").json()
+    assert body["provider"] == "groq"
+    assert body["is_free"] is True
+    assert body["is_local"] is False
+    assert body["ready"] is False  # no key yet
+
+    monkeypatch.setenv(config.GROQ_API_KEY_ENV, "gsk-test")
+    assert client.get("/api/health").json()["ready"] is True
+
+
 def test_health_not_ready_when_claude_without_key(monkeypatch):
     monkeypatch.setattr(config, "LLM_PROVIDER", "anthropic")
     monkeypatch.delenv(config.API_KEY_ENV_VAR, raising=False)

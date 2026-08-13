@@ -19,6 +19,20 @@ def test_ollama_provider_returns_local_client(monkeypatch):
     assert isinstance(client, OllamaClient)
 
 
+def test_groq_provider_without_key_raises_config_error(monkeypatch):
+    monkeypatch.setattr(config, "LLM_PROVIDER", "groq")
+    monkeypatch.delenv(config.GROQ_API_KEY_ENV, raising=False)
+    with pytest.raises(claude_client.ClaudeConfigError, match=config.GROQ_API_KEY_ENV):
+        claude_client.get_client()
+
+
+def test_groq_provider_with_key_builds_client(monkeypatch):
+    monkeypatch.setattr(config, "LLM_PROVIDER", "groq")
+    monkeypatch.setenv(config.GROQ_API_KEY_ENV, "gsk-test")
+    client = claude_client.get_client()
+    assert hasattr(client, "messages")
+
+
 def test_anthropic_without_key_raises_config_error(monkeypatch):
     monkeypatch.setattr(config, "LLM_PROVIDER", "anthropic")
     monkeypatch.delenv(config.API_KEY_ENV_VAR, raising=False)
