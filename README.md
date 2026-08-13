@@ -1,77 +1,67 @@
 # Autonomous Data Analyst Agent
 
-A Python application that behaves like a junior data analyst: give it a real, messy
-CSV and it **proactively finds patterns**, **critiques its own findings for
-statistical validity** with a second independent AI call, and **answers
+An AI app that behaves like a junior data analyst. Give it a real, messy CSV and it
+**cleans the data**, **proactively finds patterns**, **critiques its own findings for
+statistical validity** with a second independent model call, and **answers
 natural-language follow-up questions** with session memory and auto-generated charts.
 
-Two front ends share the same `analyst/` core:
-- **React + FastAPI web app** (recommended) — a live, streaming dashboard where you
-  watch the two agents work in real time. See [WEBAPP.md](WEBAPP.md).
-- **Streamlit app** (`app.py`) — the original single-file UI.
+Runs on **Claude** — or, with one env var, entirely **free on a local model via
+Ollama** (no API key, no credits). The full two-agent pipeline is identical either way.
 
-**Runs for free.** The LLM backend is pluggable: use the paid Claude API, or set
-`LLM_PROVIDER=ollama` to run the *entire* pipeline on a **free local model** (via
-[Ollama](https://ollama.com)) with no API key or credits. Same agents, same JSON
-schema, same critic — just a local model. The UI labels which engine is active so
-"Powered by Claude" is never a false claim.
+> **Two ways to run the UI:** a modern **React + FastAPI** web app (recommended) and
+> a legacy single-file **Streamlit** app. Both drive the exact same `analyst/`
+> pipeline — the difference is only the presentation layer.
 
 ## What makes it different
 
 1. **Proactive insight discovery** — most AI data tools wait for a question. This
    agent investigates the dataset unprompted and surfaces 3–5 candidate insights
-   as structured JSON (Claude call #1).
-2. **Critic-agent self-validation** — a *second, independent* Claude call reviews
+   as structured JSON (model call #1).
+2. **Critic-agent self-validation** — a *second, independent* model call reviews
    each candidate for sample size, correlation-vs-causation, cherry-picked
    timeframes, and whether the cited numbers actually appear in the data. Weak
-   claims are downgraded or rejected **before** you ever see them (Claude call #2).
-3. **Built-in observability** — every request is logged to a structured CSV
-   (timestamp, action, success, latency, confidence), and that log powers a live
-   *Agent metrics* panel in the UI: success rate, average latency, and the
-   confidence trend across insights. Logging isn't an afterthought — it's the
-   basis for a real accuracy metric.
-4. **Real-world action via MCP, human-confirmed** — the agent isn't read-only
-   anymore: next to any critic-approved insight, a **"Email this insight"**
-   button sends it as a real email through a local Model Context Protocol
-   server. Nothing fires without an explicit confirm click, and the
-   destination address is operator config the agent can never see or change
-   — the model may only influence subject/body text.
+   claims are downgraded or rejected **before you see them** (model call #2). Each
+   surviving insight carries a confidence score and the critic's reasoning.
+3. **Free local mode** — set `LLM_PROVIDER=ollama` and every call routes through a
+   local model instead of the paid API, via a drop-in adapter
+   (`analyst/ollama_client.py`) shaped exactly like the Anthropic client. The UI
+   reports which engine is live (`/api/health`) so it never falsely claims
+   "Powered by Claude" on a local run.
+4. **Built-in observability** — every request is logged to a structured CSV
+   (timestamp, action, success, latency, confidence). `/api/metrics` aggregates it
+   into a live panel: success rate, average latency, and the confidence trend.
+5. **Real-world action via MCP, human-confirmed** — next to any critic-approved
+   insight, an **"Email this insight"** button sends it through a local Model
+   Context Protocol server. Nothing fires without an explicit confirm click, and
+   the destination address is server-side config the model can never see or change.
 
 ## Architecture
 
 ```
 Raw CSV
-   ↓  guardrails.py ── size / row / extension validation (rejected before parsing)
-   ↓  cleaning.py ──── code-based cleaning (dates, currency text, duplicates,
+   │  guardrails.py ── size / row / extension validation (rejected before parsing)
+   │  cleaning.py ──── code-based cleaning (dates, currency text, duplicates,
    │                   encoding fallback) + auditable DataQualityReport
-   ↓
-Clean DataFrame ──► insight_agent.build_data_summary()   (compact stats, never raw rows)
+   ▼
+Clean DataFrame ──► insight_agent.build_data_summary()  (compact stats, never raw rows)
    │                        │
    │              ┌─────────▼──────────┐
    │              │ pipeline.py        │
-   │              │  1. insight_agent  │── Claude call #1: 3–5 candidate insights (JSON schema)
-   │              │  2. critic_agent   │── Claude call #2: approve / downgrade / reject + reasoning
+   │              │  1. insight_agent  │── model call #1: 3–5 candidate insights (JSON schema)
+   │              │  2. critic_agent   │── model call #2: approve / downgrade / reject + reasoning
    │              │  3. merge + log    │
    │              └─────────┬──────────┘
-   │                        ▼
-   │              Final insights (confidence + critic reasoning)
+   │                        ▼  final insights (confidence + critic reasoning)
    │
    ├──► qa_agent.py ── NL follow-ups with trimmed session memory; emits a
-   │                   declarative chart SPEC (never code)
-   │        ↓
-   │    guardrails.validate_chart_spec ──► charts.py (pandas groupby + matplotlib —
-   │                                       every plotted number computed by our code)
+   │                   declarative chart SPEC (never code) ─► charts computed by our pandas code
    │
-   ├──► actions.py ── declarative email-alert action SPEC (never code)
-   │        ↓
-   │    guardrails.validate_action_spec ──► app.py human confirm click ──►
-   │    mcp_client.py (spawns mcp_server/email_alert_server.py over stdio) ──►
-   │    real SMTP send. Recipient is server-side config, never model output.
+   ├──► actions.py ── email-alert SPEC ─► guardrails.validate_action_spec ─►
+   │                  human confirm ─► mcp_client.py ─► local MCP server ─► SMTP
    │
-   └──► logger.py ── logs/requests.csv ──► "Agent metrics" panel (USP #3)
+   └──► logger.py ── logs/requests.csv ─► /api/metrics ─► "Agent metrics" panel
 
-app.py (Streamlit) — thin UI layer: session state, per-session rate limit (15
-billable requests), and try/except around every external call.
+claude_client.get_client()  ── one switch: paid Anthropic API  ⇄  free local Ollama
 ```
 
 **Key design decision:** the model never sees the full dataset and never supplies
@@ -80,74 +70,80 @@ regardless of file size) and returns schema-constrained JSON. Aggregations and
 charts are computed by pandas from the real data — the model decides *what* is
 worth showing, never *how* it is computed.
 
-## Production hardening
+## Run the web app (recommended)
 
-| Requirement | Where |
-|---|---|
-| Error handling — no raw tracebacks | every agent wraps failures in one domain exception; `app.py` catches and shows clean messages |
-| Input validation — 5 MB / 50k rows / .csv only | `guardrails.validate_upload`, `validate_row_count` |
-| Destructive-op blocking | `guardrails.is_destructive` + whitelisted chart/action specs |
-| Human-in-the-loop for real-world actions | `app.py` explicit confirm/cancel step before any MCP action executes |
-| Rate limiting — 15 requests/session | `app.py` session-state counter |
-| Structured logging | `logger.py` → `logs/requests.csv` → metrics panel |
-| Secrets via env / Streamlit secrets | `claude_client.py`; key never in source (`.env` gitignored) |
-| Unit tests (80, fully mocked — zero network) | `tests/` |
-| CI on every push | `.github/workflows/ci.yml` |
-
-## Run locally
-
-**Web app (React + FastAPI) — recommended.** Free local mode, no API key:
+FastAPI backend (port 8010) + React/Vite frontend (port 5173).
 
 ```bash
 pip install -r requirements.txt
-ollama pull qwen2.5-coder:7b && ollama serve      # free local model
-LLM_PROVIDER=ollama ./run_webapp.sh               # → http://localhost:5173
+cd frontend && npm install && cd ..
 ```
 
-Or with the paid Claude API — drop `LLM_PROVIDER=ollama` and set `ANTHROPIC_API_KEY`
-first. Full details, including the metrics panel and email action, are in
-[WEBAPP.md](WEBAPP.md).
-
-**Streamlit app** (original single-file UI):
+**On Claude** (needs an API key):
 
 ```bash
-pip install -r requirements.txt
-cp .env.example .env           # paste your ANTHROPIC_API_KEY
-export $(grep -v '^#' .env | xargs)
+export ANTHROPIC_API_KEY=sk-ant-...      # or put it in a .env file (auto-loaded)
+./run_webapp.sh
+```
+
+**Free — on a local model** (no key, no credits):
+
+```bash
+ollama pull qwen2.5-coder:7b             # one time; strong at schema-valid JSON
+ollama serve                             # if not already running
+LLM_PROVIDER=ollama OLLAMA_MODEL=qwen2.5-coder:7b ./run_webapp.sh
+```
+
+Then open **http://localhost:5173**. Local models are slower (~30–90 s per call),
+so the live streaming timeline is especially useful — you watch each stage complete.
+See [WEBAPP.md](WEBAPP.md) for details and provider options.
+
+## Run the Streamlit app (legacy / alternative)
+
+A single-file UI over the same pipeline:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
 streamlit run app.py
 ```
 
-The email-alert action is optional — without `SMTP_*` / `ALERT_EMAIL_*` env
-vars set, everything else works normally and clicking "Email this insight"
-just fails with a clean "missing SMTP env var" message instead of a crash.
+The email-alert action is optional — without `SMTP_*` / `ALERT_EMAIL_*` env vars,
+everything else works and the email button fails with a clean message.
 
-Run the tests (no API key or SMTP needed — all Claude calls and MCP tool
-calls are mocked):
+## Tests
+
+95 unit + HTTP-contract tests, fully mocked — no network, no API key, no SMTP:
 
 ```bash
 pytest
 ```
 
-Manual live smoke test of the insight agent (makes real, billed API calls):
+Coverage spans cleaning, guardrails, both agents, the QA agent, the pipeline,
+the FastAPI endpoints (health, metrics, rate limiting, the email action), the
+Ollama adapter, the logger, and provider selection. CI runs them on every push
+([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+
+Live smoke tests that make real, billed calls:
 
 ```bash
-python scripts/check_insights.py data/superstore.csv
+python scripts/check_insights.py data/superstore.csv   # real insight run
+python scripts/check_email_alert.py                    # sends a real email
 ```
 
-Manual live smoke test of the email-alert MCP action (sends a real email):
+## Production hardening
 
-```bash
-python scripts/check_email_alert.py
-```
-
-## Deploy (Streamlit Community Cloud — free)
-
-1. Push this repo to GitHub.
-2. On [share.streamlit.io](https://share.streamlit.io), create an app pointing at `app.py`.
-3. In the app's **Secrets** settings add: `ANTHROPIC_API_KEY = "sk-ant-..."`.
-4. (Optional) Add `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`,
-   `ALERT_EMAIL_FROM`, `ALERT_EMAIL_TO` to enable the "Email this insight" action.
-5. Done — public URL.
+| Requirement | Where |
+|---|---|
+| Error handling — no raw tracebacks | every agent wraps failures in one domain exception; API/UI catch and show clean messages |
+| Input validation — 5 MB / 50k rows / .csv only | `guardrails.validate_upload`, `validate_row_count` |
+| Destructive-op blocking | `guardrails.is_destructive` + whitelisted chart/action specs |
+| Human-in-the-loop for real-world actions | explicit confirm step before any MCP action executes |
+| Rate limiting — 15 AI requests / session | per-session counter (`api/main.py`, `app.py`) |
+| CORS allowlist | `api/main.py` (local dev origins by default; `CORS_ALLOW_ORIGINS` to override) |
+| Structured logging + live metrics | `logger.py` → `logs/requests.csv` → `/api/metrics` |
+| Secrets via env / secrets manager | key read from env, never in source (`.env` gitignored) |
+| Unit + HTTP tests (95, fully mocked) | `tests/` |
+| CI on every push | `.github/workflows/ci.yml` |
 
 ## Dataset
 
@@ -155,16 +151,18 @@ Kaggle **Superstore Sales** (`data/superstore.csv`): ~9,994 retail transactions 
 genuine messiness — Windows-1252 encoding (handled by fallback), text-format M/D/Y
 dates, negative profits from discounting, embedded commas in product names.
 
-## Known limitations (asked about these in interviews? own them)
+## Known limitations (own them in interviews)
 
-- **One real-world action so far.** The agent can now send an email alert via
-  a local MCP server, but that's it — no tickets, no Slack, no CRM writes.
-  The `actions.py` / `guardrails.validate_action_spec` pattern is built to
-  extend (add a new `ALLOWED_ACTIONS` entry + executor branch + MCP tool),
-  but only email is wired up today.
+- **Local-model quality is lower than Claude.** The free path runs small 2–7B
+  models; insights are simpler and occasionally less precise. Nothing is faked — it
+  is a real (weaker) LLM running the identical pipeline.
 - **The critic is AI-judged, not a formal statistical test.** It reliably catches
   the common failure classes (tiny samples, causal overreach, invented numbers),
   validated by manual spot-checking — it is not a mathematically rigorous audit.
-- **No external context.** Insights come from the uploaded data's schema and
-  statistics only; it won't know a sales dip coincided with a holiday unless a
-  search tool is added.
+- **One real-world action so far.** Email via MCP is wired up; the
+  `actions.py` / `validate_action_spec` pattern is built to extend (Slack, tickets),
+  but only email exists today.
+- **Single-instance server state.** Sessions live in an in-memory dict — fine for
+  one process; a multi-worker deploy would need a shared store (e.g. Redis).
+- **No external context.** Insights come from the uploaded data only; it won't know
+  a sales dip coincided with a holiday unless a search tool is added.

@@ -57,14 +57,20 @@ from api.chart_data import chart_data
 
 app = FastAPI(title="Autonomous Data Analyst API")
 
-# CORS: the Vite dev server (localhost:5173) and the built app are served from a
-# different origin than this API during development. Allow local origins so the
-# browser doesn't block the fetch. Tighten `allow_origins` for a real deploy.
+# CORS: the Vite dev server (localhost:5173) is a different origin than this API
+# in development, so the browser needs an explicit allowlist. We default to the
+# known local dev origins rather than "*" (a wildcard would let any site on the
+# machine call the API). Override for a real deploy via CORS_ALLOW_ORIGINS, a
+# comma-separated list of exact origins.
+_DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
+_ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get("CORS_ALLOW_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 
