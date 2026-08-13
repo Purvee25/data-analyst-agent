@@ -98,6 +98,13 @@ Then open **http://localhost:5173**. Local models are slower (~30–90 s per cal
 so the live streaming timeline is especially useful — you watch each stage complete.
 See [WEBAPP.md](WEBAPP.md) for details and provider options.
 
+## Deploy (free, public URL)
+
+The app ships as a single Docker service (FastAPI serves the built React app). A
+public host can't reach a local Ollama, so the deploy runs on **Groq** — a free,
+hosted, OpenAI-compatible model. One-click Render blueprint + step-by-step guide
+in **[DEPLOY.md](DEPLOY.md)**.
+
 ## Run the Streamlit app (legacy / alternative)
 
 A single-file UI over the same pipeline:

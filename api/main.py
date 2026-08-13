@@ -183,9 +183,15 @@ def health() -> dict:
     Claude" vs "Running free on a local model" — instead of a hardcoded claim.
     """
     info = config.provider_info()
-    # A local (Ollama) run needs no API key, so it's "ready" regardless; a Claude
-    # run is only ready once the key is present.
+    # "Ready" means the active backend can actually make a call: local Ollama needs
+    # nothing; Groq needs GROQ_API_KEY; Claude needs ANTHROPIC_API_KEY.
     api_key_configured = config.API_KEY_ENV_VAR in os.environ
+    if info["is_local"]:
+        ready = True
+    elif info["provider"] == "groq":
+        ready = bool(os.environ.get(config.GROQ_API_KEY_ENV))
+    else:
+        ready = api_key_configured
     # The email action only works if every SMTP var is set server-side; the UI
     # uses this to disable the button with an honest hint instead of failing late.
     email_env = ("SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD",
@@ -193,7 +199,7 @@ def health() -> dict:
     return {
         "status": "ok",
         "api_key_configured": api_key_configured,
-        "ready": info["is_local"] or api_key_configured,
+        "ready": ready,
         "email_configured": all(os.environ.get(v) for v in email_env),
         **info,
     }

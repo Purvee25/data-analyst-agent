@@ -61,6 +61,7 @@ export interface Health {
   provider: string;
   model: string;
   is_local: boolean;
+  is_free: boolean; // true for any no-cost backend (local Ollama or free Groq)
   label: string; // e.g. "Powered by Claude" | "Running free on a local model"
   engine_label: string; // e.g. "qwen2.5-coder:7b · local & free"
   call_noun: string; // e.g. "Claude call" | "local model call"

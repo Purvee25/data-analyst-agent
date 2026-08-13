@@ -113,7 +113,7 @@ export default function App() {
         </Section>
 
         <footer className="border-t border-line pt-6 text-center text-xs text-ink-faint">
-          Validated · rate-limited · logged{health?.is_local ? ` · ${health.engine_label}` : ""}
+          Validated · rate-limited · logged{health?.is_free ? ` · ${health.engine_label}` : ""}
         </footer>
       </main>
     </div>

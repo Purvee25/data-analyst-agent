@@ -42,6 +42,15 @@ def get_client() -> anthropic.Anthropic:
 
         return OllamaClient()
 
+    # Free hosted substitute (works on a public deploy): Groq. Needs GROQ_API_KEY.
+    if config.LLM_PROVIDER == "groq":
+        from .groq_client import GroqClient, GroqError
+
+        try:
+            return GroqClient()
+        except GroqError as exc:
+            raise ClaudeConfigError(str(exc)) from exc
+
     if config.API_KEY_ENV_VAR not in os.environ:
         raise ClaudeConfigError(
             f"{config.API_KEY_ENV_VAR} is not set. Set it in your environment "
