@@ -61,21 +61,10 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-5">
-            {health && (
-              <span
-                title={health.engine_label}
-                className="hidden items-center gap-1.5 text-xs text-ink-soft sm:inline-flex"
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${health.is_local ? "bg-approve" : "bg-accent"}`} />
-                {health.is_local ? "Local · free" : "Claude"}
-              </span>
-            )}
-            <div className="text-right leading-tight">
-              <p className="kicker">Requests</p>
-              <p className="text-sm font-semibold text-ink">
-                {used} <span className="text-ink-faint">/ {max}</span>
-              </p>
-            </div>
+            <p className="text-sm tabular-nums text-ink-soft">
+              <span className="font-semibold text-ink">{used}</span>
+              <span className="text-ink-faint"> / {max}</span>
+            </p>
             <button
               onClick={() => {
                 setSession(null);
@@ -124,8 +113,7 @@ export default function App() {
         </Section>
 
         <footer className="border-t border-line pt-6 text-center text-xs text-ink-faint">
-          Cleaning runs locally · insights use two independent {health ? `${health.call_noun}s` : "model calls"}
-          {health?.is_local ? ` (${health.engine_label})` : ""} · every request is validated, rate-limited &amp; logged.
+          Validated · rate-limited · logged{health?.is_local ? ` · ${health.engine_label}` : ""}
         </footer>
       </main>
     </div>
