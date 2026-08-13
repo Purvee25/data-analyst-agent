@@ -56,11 +56,19 @@ class _Messages:
         response_format = None
         if output_config:  # caller wants JSON — turn on Groq's JSON mode
             response_format = {"type": "json_object"}
-            # Groq/OpenAI JSON mode rejects the request (400) unless the word
-            # "json" appears somewhere in the messages. Our schema-driven prompts
-            # don't always say it, so guarantee it in the system message.
-            if "json" not in system_content.lower():
-                system_content += "\n\nRespond with a single valid JSON object."
+            # Groq's json_object mode is COARSE: it forces valid JSON but ignores
+            # the JSON schema (unlike Anthropic/Ollama, which constrain to it). So
+            # the model doesn't know the required keys (e.g. {"reviews": [...]}) and
+            # returns a differently-shaped object. We convey the schema in the
+            # prompt instead. This also satisfies Groq's rule that the word "json"
+            # must appear in the messages, or the request 400s.
+            schema = output_config.get("format", {}).get("schema")
+            instruction = "\n\nRespond with a single valid JSON object"
+            if schema:
+                instruction += " matching this JSON schema exactly:\n" + json.dumps(schema)
+            else:
+                instruction += "."
+            system_content += instruction
 
         payload: dict = {
             "model": self._model,
