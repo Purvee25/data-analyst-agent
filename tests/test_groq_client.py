@@ -57,7 +57,12 @@ def test_response_has_anthropic_shape_and_auth(monkeypatch):
     assert resp.stop_reason == "end_turn"
     assert resp.content[0].text == '{"insights": []}'
     # OpenAI-shaped payload: system prepended, JSON mode on, bearer auth set.
-    assert cap["payload"]["messages"][0] == {"role": "system", "content": "You are a test."}
+    # The JSON instruction is appended to the system prompt because Groq's
+    # json_object mode ignores the schema and requires "json" in the messages.
+    assert cap["payload"]["messages"][0] == {
+        "role": "system",
+        "content": "You are a test.\n\nRespond with a single valid JSON object.",
+    }
     assert cap["payload"]["response_format"] == {"type": "json_object"}
     assert cap["headers"]["authorization"] == "Bearer gsk-test"
 
