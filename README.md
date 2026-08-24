@@ -1,5 +1,7 @@
 # Autonomous Data Analyst Agent
 
+[![tests](https://github.com/Purvee25/data-analyst-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Purvee25/data-analyst-agent/actions/workflows/ci.yml)
+
 An AI app that behaves like a junior data analyst. Give it a real, messy CSV and it
 **cleans the data**, **proactively finds patterns**, **critiques its own findings for
 statistical validity** with a second independent model call, and **answers
