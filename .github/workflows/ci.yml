@@ -1,0 +1,25 @@
+# CI — production hardening requirement #14: run the (fully mocked) test suite
+# on every push and PR. No ANTHROPIC_API_KEY is needed or provided here; any
+# test that accidentally tried to hit the real API would fail loudly.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run test suite
+        run: pytest -v
