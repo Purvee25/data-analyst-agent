@@ -10,7 +10,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from analyst import config, logger, pipeline
+from analyst import config, pipeline
 from analyst.insight_agent import InsightGenerationError
 from tests.conftest import FakeClient, text_response
 

@@ -2,7 +2,7 @@
 // the supporting numbers, and the critic's reasoning. This is the visual payoff
 // of the two-agent pipeline — the critic's judgement is shown, not hidden.
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { emailInsight } from "../api";
 import type { Category, Insight, Verdict } from "../types";
 
@@ -31,7 +31,7 @@ type EmailState =
   | { kind: "sent"; message: string }
   | { kind: "error"; message: string };
 
-export default function InsightCard({
+function InsightCard({
   insight,
   index,
   sessionId,
@@ -136,3 +136,5 @@ export default function InsightCard({
     </div>
   );
 }
+
+export default memo(InsightCard);

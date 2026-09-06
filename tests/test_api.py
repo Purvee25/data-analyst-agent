@@ -95,6 +95,29 @@ def test_metrics_aggregates_logged_rows(monkeypatch, tmp_path):
     assert body["confidence_series"] == [0.8]
 
 
+# --- session eviction -----------------------------------------------------
+def test_expired_session_is_evicted_on_new_session_creation():
+    sid = _load_demo()
+    api_main._SESSIONS[sid].last_accessed -= api_main._SESSION_TTL_SECONDS + 1
+    _load_demo()  # triggers _evict_expired_sessions() inside _new_session
+    assert sid not in api_main._SESSIONS
+
+
+def test_session_store_capped_evicts_oldest():
+    api_main._SESSIONS.clear()
+    original_max = api_main._MAX_SESSIONS
+    api_main._MAX_SESSIONS = 2
+    try:
+        first = _load_demo()
+        _load_demo()
+        assert len(api_main._SESSIONS) == 2
+        _load_demo()
+        assert len(api_main._SESSIONS) == 2
+        assert first not in api_main._SESSIONS
+    finally:
+        api_main._MAX_SESSIONS = original_max
+
+
 # --- session + rate limiting ---------------------------------------------
 def test_insights_unknown_session_404():
     resp = client.post("/api/insights", json={"session_id": "does-not-exist"})

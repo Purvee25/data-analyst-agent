@@ -17,10 +17,11 @@ WHY execute_action() takes no "are you sure" parameter:
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from . import guardrails
-from .mcp_client import MCPClientError, call_tool as _default_call_tool
+from .mcp_client import MCPClientError
+from .mcp_client import call_tool as _default_call_tool
 
 
 class ActionError(Exception):

@@ -24,8 +24,14 @@ export default function Landing({ onReady, health }: { onReady: (s: Session) => 
   const isFree = health?.is_free ?? false;
   const FEATURES = features(health?.call_noun ?? "Claude call");
 
+  const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
   async function run(kind: "demo" | "upload", file?: File) {
     setError(null);
+    if (kind === "upload" && file && file.size > MAX_UPLOAD_BYTES) {
+      setError(`File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Max is 5 MB.`);
+      return;
+    }
     setLoading(kind);
     try {
       const session = kind === "demo" ? await loadDemo() : await uploadCsv(file!);

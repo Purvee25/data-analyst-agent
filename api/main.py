@@ -36,8 +36,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from analyst import actions, config
-from analyst.cleaning import clean_csv_bytes
 from analyst.claude_client import ClaudeConfigError
+from analyst.cleaning import clean_csv_bytes
 from analyst.critic_agent import CriticReviewError, merge_insights_with_reviews, review_insights
 from analyst.guardrails import (
     ValidationError,
@@ -75,6 +75,10 @@ app.add_middleware(
 )
 
 
+_SESSION_TTL_SECONDS = 3600  # evict sessions idle longer than 1 hour
+_MAX_SESSIONS = 100  # hard cap to bound memory under traffic
+
+
 class _Session:
     """Holds one cleaned dataset + derived state for the life of a browser session."""
 
@@ -83,24 +87,27 @@ class _Session:
         self.df = df
         self.report = report
         self.summary = summary
-        # Rate limiting (production req #9): bound billable Claude calls per session.
         self.request_count = 0
-        # Separate cap on outbound real-world actions (email sends) per session —
-        # bounds side-effect volume independently of LLM spend.
         self.action_count = 0
-        # Q&A memory (core feature #5): user/assistant turns resent to Claude.
         self.history: list[dict] = []
+        self.last_accessed = time.monotonic()
 
 
-# Process-local session store. Fine for a single-instance app; swap for Redis if
-# this ever runs multi-worker. Keyed by an opaque uuid handed to the client.
 _SESSIONS: dict[str, _Session] = {}
+
+
+def _evict_expired_sessions() -> None:
+    now = time.monotonic()
+    expired = [sid for sid, s in _SESSIONS.items() if now - s.last_accessed > _SESSION_TTL_SECONDS]
+    for sid in expired:
+        del _SESSIONS[sid]
 
 
 def _get_session(session_id: str) -> _Session:
     session = _SESSIONS.get(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found. Load a dataset first.")
+    session.last_accessed = time.monotonic()
     return session
 
 
@@ -151,6 +158,10 @@ def _new_session(filename: str, raw: bytes) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     summary = build_data_summary(df)
+    _evict_expired_sessions()
+    if len(_SESSIONS) >= _MAX_SESSIONS:
+        oldest = min(_SESSIONS, key=lambda sid: _SESSIONS[sid].last_accessed)
+        del _SESSIONS[oldest]
     session_id = uuid.uuid4().hex
     _SESSIONS[session_id] = _Session(filename, df, report, summary)
     return _session_payload(session_id, _SESSIONS[session_id])

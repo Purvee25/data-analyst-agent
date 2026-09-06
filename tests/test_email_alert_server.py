@@ -13,7 +13,7 @@ import smtplib
 
 import pytest
 
-from mcp_server.email_alert_server import EmailSendError, REQUIRED_ENV_VARS, send_email
+from mcp_server.email_alert_server import REQUIRED_ENV_VARS, EmailSendError, send_email
 
 FULL_ENV = {
     "SMTP_HOST": "smtp.example.com",
@@ -28,7 +28,7 @@ FULL_ENV = {
 class FakeSMTP:
     """Records calls instead of touching the network. Supports the `with` protocol."""
 
-    instances: list["FakeSMTP"] = []
+    instances: list[FakeSMTP] = []
 
     def __init__(self, host, port, timeout=None):
         self.host, self.port, self.timeout = host, port, timeout
