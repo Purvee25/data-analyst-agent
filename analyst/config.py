@@ -42,7 +42,7 @@ OLLAMA_TIMEOUT: float = float(os.environ.get("OLLAMA_TIMEOUT", "180"))
 # cloud, so it works on a public deploy where a local model can't. Selected with
 # LLM_PROVIDER=groq; needs a (free) GROQ_API_KEY. Same two-agent pipeline.
 GROQ_API_BASE: str = os.environ.get("GROQ_API_BASE", "https://api.groq.com/openai/v1")
-GROQ_MODEL: str = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL: str = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
 GROQ_API_KEY_ENV: str = "GROQ_API_KEY"
 GROQ_TIMEOUT: float = float(os.environ.get("GROQ_TIMEOUT", "60"))
 
