@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from types import SimpleNamespace
@@ -95,16 +96,28 @@ class _Messages:
             },
             method="POST",
         )
-        try:
-            with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-                body = json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", "replace")[:300]
-            raise GroqError(f"Groq API error {exc.code}: {detail}") from exc
-        except urllib.error.URLError as exc:
-            raise GroqError(f"Could not reach Groq at {self._base} ({exc}).") from exc
-        except Exception as exc:  # noqa: BLE001 - surfaced as a clean provider error
-            raise GroqError(f"Groq request failed: {exc}") from exc
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                    body = json.loads(resp.read().decode("utf-8"))
+                break  # success
+            except urllib.error.HTTPError as exc:
+                if exc.code == 429 and attempt < 2:
+                    # honour Retry-After if present, else fall back to 20 s
+                    retry_after = float(exc.headers.get("Retry-After", 20))
+                    time.sleep(min(retry_after, 60))
+                    last_exc = exc
+                    continue
+                detail = exc.read().decode("utf-8", "replace")[:300]
+                raise GroqError(f"Groq API error {exc.code}: {detail}") from exc
+            except urllib.error.URLError as exc:
+                raise GroqError(f"Could not reach Groq at {self._base} ({exc}).") from exc
+            except Exception as exc:  # noqa: BLE001 - surfaced as a clean provider error
+                raise GroqError(f"Groq request failed: {exc}") from exc
+        else:
+            detail = last_exc.read().decode("utf-8", "replace")[:300] if last_exc else "unknown"
+            raise GroqError(f"Groq API error 429 after retries: {detail}") from last_exc
 
         try:
             text = body["choices"][0]["message"]["content"]
