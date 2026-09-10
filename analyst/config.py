@@ -91,6 +91,14 @@ QA_MAX_TOKENS: int = 1500
 # per-request token cost and memory growth over a long Q&A session.
 QA_HISTORY_MAX_MESSAGES: int = 20
 
+# The Q&A agent also gets numeric-by-category aggregates the univariate summary
+# omits (e.g. "Profit by Region"), so it can answer cross-tab questions. Every
+# axis is capped so the added prompt cost stays small on rate-limited free tiers.
+QA_AGG_MAX_DIMS: int = 4  # how many categorical columns to group by
+QA_AGG_MAX_MEASURES: int = 4  # how many numeric columns to aggregate
+QA_AGG_TOP_GROUPS: int = 6  # groups shown per (measure, dimension) pair
+QA_AGG_MAX_CARDINALITY: int = 15  # skip categoricals with more distinct values
+
 # --- Input validation limits (production hardening req #9) ------------------
 # 5 MB matches the requirement. Streamlit also enforces a server-side upload cap,
 # but we validate independently so the rule is explicit and testable.

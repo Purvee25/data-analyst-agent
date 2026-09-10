@@ -49,6 +49,7 @@ from analyst.guardrails import (
 from analyst.insight_agent import (
     InsightGenerationError,
     build_data_summary,
+    build_key_aggregates,
     generate_insights,
 )
 from analyst.logger import log_request
@@ -82,11 +83,15 @@ _MAX_SESSIONS = 100  # hard cap to bound memory under traffic
 class _Session:
     """Holds one cleaned dataset + derived state for the life of a browser session."""
 
-    def __init__(self, filename: str, df: pd.DataFrame, report, summary: str):
+    def __init__(self, filename: str, df: pd.DataFrame, report, summary: str, qa_summary: str):
         self.filename = filename
         self.df = df
         self.report = report
         self.summary = summary
+        # The Q&A agent gets the summary plus numeric-by-category aggregates, so
+        # it can answer cross-tab questions the insight pipeline's univariate
+        # summary can't (e.g. "which Region has the highest Profit?").
+        self.qa_summary = qa_summary
         self.request_count = 0
         self.action_count = 0
         self.history: list[dict] = []
@@ -158,12 +163,14 @@ def _new_session(filename: str, raw: bytes) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     summary = build_data_summary(df)
+    aggregates = build_key_aggregates(df)
+    qa_summary = f"{summary}\n\n{aggregates}" if aggregates else summary
     _evict_expired_sessions()
     if len(_SESSIONS) >= _MAX_SESSIONS:
         oldest = min(_SESSIONS, key=lambda sid: _SESSIONS[sid].last_accessed)
         del _SESSIONS[oldest]
     session_id = uuid.uuid4().hex
-    _SESSIONS[session_id] = _Session(filename, df, report, summary)
+    _SESSIONS[session_id] = _Session(filename, df, report, summary, qa_summary)
     return _session_payload(session_id, _SESSIONS[session_id])
 
 
@@ -302,7 +309,7 @@ def ask(req: AskRequest) -> dict:
     session.request_count += 1
 
     try:
-        result = answer_question(req.question, session.summary, history=session.history)
+        result = answer_question(req.question, session.qa_summary, history=session.history)
     except ClaudeConfigError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except QAError as exc:

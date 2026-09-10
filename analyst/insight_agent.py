@@ -173,6 +173,57 @@ def build_data_summary(df: pd.DataFrame, sample_rows: int = config.SAMPLE_ROWS_F
     return "\n".join(lines)
 
 
+def _is_id_like(series: pd.Series, name: str) -> bool:
+    """True for numeric columns that are identifiers, not measures.
+
+    Summing a Row ID or Postal Code is meaningless and — worse — would consume a
+    measure slot that a real metric like Profit needs. Caught two ways: a name
+    hinting at an identifier, or near-unique values (an id, not a quantity).
+    """
+    lowered = name.lower()
+    if any(hint in lowered for hint in ("id", "zip", "postal", "code", "phone")):
+        return True
+    # Near-uniqueness only signals an identifier on enough rows; on a tiny frame
+    # a genuine continuous measure (Sales, Profit) is all-unique by chance.
+    n = len(series)
+    return n >= 20 and series.nunique() / n > 0.9
+
+
+def build_key_aggregates(
+    df: pd.DataFrame,
+    max_dims: int = config.QA_AGG_MAX_DIMS,
+    max_measures: int = config.QA_AGG_MAX_MEASURES,
+    top_groups: int = config.QA_AGG_TOP_GROUPS,
+) -> str:
+    """Numeric-by-category totals the univariate summary can't express.
+
+    build_data_summary() reports each column on its own (describe, value_counts),
+    so it cannot answer cross-tab questions like "which Region has the highest
+    Profit?". This adds the missing groupby view: the top groups by summed value
+    for each (numeric measure x low-cardinality category) pair. Every axis is
+    bounded (see the QA_AGG_* config) so the added prompt cost stays small on
+    rate-limited free tiers. Returns "" when the data has no usable pair.
+    """
+    numeric_cols = [
+        c for c in df.select_dtypes(include="number").columns if not _is_id_like(df[c], c)
+    ][:max_measures]
+    dim_cols = [
+        c
+        for c in df.select_dtypes(include="object").columns
+        if 2 <= df[c].nunique() <= config.QA_AGG_MAX_CARDINALITY
+    ][:max_dims]
+    if not numeric_cols or not dim_cols:
+        return ""
+
+    lines = ["Key aggregates (numeric totals by category, top groups by sum):"]
+    for dim in dim_cols:
+        for measure in numeric_cols:
+            grouped = df.groupby(dim)[measure].sum().sort_values(ascending=False).head(top_groups)
+            parts = ", ".join(f"{idx!r}={val:.2f}" for idx, val in grouped.items())
+            lines.append(f"  - {measure} by {dim} (sum): {parts}")
+    return "\n".join(lines)
+
+
 def generate_insights(
     data_summary: str, client: anthropic.Anthropic | None = None
 ) -> list[dict]:
