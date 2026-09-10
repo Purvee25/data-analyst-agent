@@ -3,10 +3,17 @@
 // real time and vetted insight cards pop in one-by-one as the critic approves
 // them — showcasing the two-agent architecture instead of hiding it.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Insight } from "../types";
 import InsightCard from "./InsightCard";
 import AgentActivity, { type Stage } from "./AgentActivity";
+
+type StreamEvent =
+  | { stage: "summarizing" | "generating" | "critiquing"; message?: string }
+  | { stage: "generated"; count: number; message?: string }
+  | { stage: "insight"; insight: Insight }
+  | { stage: "done"; approved: number; candidates: number; requests_used?: number }
+  | { stage: "error"; detail?: string };
 
 export default function InsightsPanel({
   sessionId,
@@ -30,6 +37,12 @@ export default function InsightsPanel({
   // set this and ignore anything the reconnected socket delivers.
   const doneRef = useRef(false);
 
+  useEffect(() => {
+    return () => {
+      esRef.current?.close();
+    };
+  }, []);
+
   const running = stage !== "idle" && stage !== "done" && stage !== "error";
 
   function start() {
@@ -46,7 +59,7 @@ export default function InsightsPanel({
 
     es.onmessage = (e) => {
       if (doneRef.current) return;
-      const evt = JSON.parse(e.data);
+      const evt = JSON.parse(e.data) as StreamEvent;
       switch (evt.stage) {
         case "summarizing":
         case "generating":
@@ -58,7 +71,7 @@ export default function InsightsPanel({
           setNote(evt.message ?? "");
           break;
         case "insight":
-          setInsights((prev) => [...prev, evt.insight as Insight]);
+          setInsights((prev) => [...prev, evt.insight]);
           break;
         case "done":
           doneRef.current = true;
@@ -119,7 +132,7 @@ export default function InsightsPanel({
         <div className="grid gap-4 sm:grid-cols-2">
           {insights.map((ins, i) => (
             <InsightCard
-              key={i}
+              key={ins.insight}
               insight={ins}
               index={i}
               sessionId={sessionId}

@@ -53,7 +53,7 @@ def log_request(
                 writer.writeheader()
             writer.writerow(
                 {
-                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
                     "action": action,
                     "detail": detail,
                     "success": success,

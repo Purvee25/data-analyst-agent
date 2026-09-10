@@ -46,10 +46,9 @@ async def _call_tool_async(tool_name: str, arguments: dict[str, Any], timeout: f
     server_params = StdioServerParameters(
         command=sys.executable, args=[_SERVER_SCRIPT], env=dict(os.environ)
     )
-    async with stdio_client(server_params) as (read, write):
-        async with ClientSession(read, write) as session:
-            await asyncio.wait_for(session.initialize(), timeout=timeout)
-            result = await asyncio.wait_for(session.call_tool(tool_name, arguments), timeout=timeout)
+    async with stdio_client(server_params) as (read, write), ClientSession(read, write) as session:
+        await asyncio.wait_for(session.initialize(), timeout=timeout)
+        result = await asyncio.wait_for(session.call_tool(tool_name, arguments), timeout=timeout)
 
     if result.isError:
         detail = result.content[0].text if result.content else "unknown MCP tool error"
@@ -70,7 +69,7 @@ def call_tool(
     """
     try:
         return asyncio.run(_call_tool_async(tool_name, arguments, timeout))
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         raise MCPClientError(f"MCP tool call timed out after {timeout}s.") from exc
     except MCPClientError:
         raise

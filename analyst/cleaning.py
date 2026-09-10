@@ -232,7 +232,6 @@ def clean_dataframe(df: pd.DataFrame, encoding_used: str = "utf-8") -> tuple[pd.
     for col in df.columns:
         if not _looks_like_date_column(col):
             continue
-        original_non_null = df[col].notna().sum()
         # format inference; dayfirst=False matches the US M/D/Y Superstore format.
         parsed = pd.to_datetime(df[col], errors="coerce", format="mixed")
         unparseable = int((parsed.isna() & df[col].notna()).sum())

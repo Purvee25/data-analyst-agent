@@ -49,7 +49,7 @@ def chart_data(df: pd.DataFrame, spec: dict) -> dict:
 
     points = [
         {"label": label, "value": (None if pd.isna(v) else round(float(v), 2))}
-        for label, v in zip(labels, series.values)
+        for label, v in zip(labels, series.values, strict=True)
     ]
     return {
         "kind": kind,

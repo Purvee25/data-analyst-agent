@@ -12,5 +12,8 @@ fastapi==0.139.0
 uvicorn==0.51.0
 python-multipart==0.0.32
 
-# streamlit==1.41.1  # legacy Streamlit UI (app.py) — kept but superseded by the React frontend.
-streamlit==1.41.1
+# MCP email alert server dependency
+requests==2.32.3
+
+# Test coverage
+pytest-cov==6.1.1

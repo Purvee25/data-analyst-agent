@@ -121,15 +121,17 @@ everything else works and the email button fails with a clean message.
 
 ## Tests
 
-95 unit + HTTP-contract tests, fully mocked — no network, no API key, no SMTP:
+111 unit + HTTP-contract tests, fully mocked — no network, no API key, no SMTP:
 
 ```bash
 pytest
 ```
 
-Coverage spans cleaning, guardrails, both agents, the QA agent, the pipeline,
-the FastAPI endpoints (health, metrics, rate limiting, the email action), the
-Ollama adapter, the logger, and provider selection. CI runs them on every push
+Coverage (86%) spans cleaning, guardrails, both agents, the QA agent, the
+pipeline, the FastAPI endpoints (health, metrics, rate limiting, session
+eviction, the email action), chart aggregation, the Ollama adapter, the logger,
+and provider selection. CI runs the suite plus `ruff`, a coverage gate, the
+frontend type-check/lint, and a Docker build on every push
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
 Live smoke tests that make real, billed calls:
@@ -151,8 +153,9 @@ python scripts/check_email_alert.py                    # sends a real email
 | CORS allowlist | `api/main.py` (local dev origins by default; `CORS_ALLOW_ORIGINS` to override) |
 | Structured logging + live metrics | `logger.py` → `logs/requests.csv` → `/api/metrics` |
 | Secrets via env / secrets manager | key read from env, never in source (`.env` gitignored) |
-| Unit + HTTP tests (95, fully mocked) | `tests/` |
-| CI on every push | `.github/workflows/ci.yml` |
+| Unit + HTTP tests (111, fully mocked) | `tests/` |
+| Bounded session store — TTL + max-session eviction | `api/main.py` |
+| CI on every push — tests, lint, coverage gate, Docker build | `.github/workflows/ci.yml` |
 
 ## Dataset
 
