@@ -32,8 +32,8 @@ class _NoOpFastMCP:
 _fake_mcp_mod.FastMCP = _NoOpFastMCP
 sys.modules.setdefault("mcp.server.fastmcp", _fake_mcp_mod)
 
-import pandas as pd
-import pytest
+import pandas as pd  # noqa: E402  (must follow the FastMCP stub above)
+import pytest  # noqa: E402
 
 # Make `analyst` importable when pytest runs from the repo root without install.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
