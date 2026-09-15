@@ -11,8 +11,26 @@ from __future__ import annotations
 
 import json
 import sys
+import types
 from pathlib import Path
 from types import SimpleNamespace
+
+# Stub out FastMCP before any test module imports mcp_server.email_alert_server.
+# mcp 1.28+ hits a Pydantic v2 bug when wrapping `-> str` tools at module load
+# time. The tests only exercise the plain send_email() function, so a no-op
+# FastMCP is enough.
+_fake_mcp_mod = types.ModuleType("mcp.server.fastmcp")
+
+
+class _NoOpFastMCP:
+    def __init__(self, *a, **kw): ...
+    def tool(self, *a, **kw):
+        return lambda fn: fn
+    def run(self, *a, **kw): ...
+
+
+_fake_mcp_mod.FastMCP = _NoOpFastMCP
+sys.modules.setdefault("mcp.server.fastmcp", _fake_mcp_mod)
 
 import pandas as pd
 import pytest
