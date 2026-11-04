@@ -1,0 +1,7 @@
+app.py
+tests/
+scripts/
+frontend/
+*.md
+Dockerfile
+render.yaml

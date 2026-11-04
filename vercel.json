@@ -1,0 +1,9 @@
+{
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/main" }],
+  "functions": {
+    "api/main.py": { "includeFiles": "{analyst,mcp_server,data}/**", "maxDuration": 60 }
+  }
+}
