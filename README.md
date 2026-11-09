@@ -121,7 +121,7 @@ everything else works and the email button fails with a clean message.
 
 ## Tests
 
-111 unit + HTTP-contract tests, fully mocked — no network, no API key, no SMTP:
+115 unit + HTTP-contract tests, fully mocked — no network, no API key, no SMTP:
 
 ```bash
 pytest
@@ -153,7 +153,7 @@ python scripts/check_email_alert.py                    # sends a real email
 | CORS allowlist | `api/main.py` (local dev origins by default; `CORS_ALLOW_ORIGINS` to override) |
 | Structured logging + live metrics | `logger.py` → `logs/requests.csv` → `/api/metrics` |
 | Secrets via env / secrets manager | key read from env, never in source (`.env` gitignored) |
-| Unit + HTTP tests (111, fully mocked) | `tests/` |
+| Unit + HTTP tests (115, fully mocked) | `tests/` |
 | Bounded session store — TTL + max-session eviction | `api/main.py` |
 | CI on every push — tests, lint, coverage gate, Docker build | `.github/workflows/ci.yml` |
 
