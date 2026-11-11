@@ -29,19 +29,13 @@ class PipelineError(Exception):
 
 
 def run_insight_pipeline(df: pd.DataFrame, client: anthropic.Anthropic | None = None) -> list[dict]:
-    """Run the full insight pipeline: summarize -> generate -> critique -> merge.
-
-    Logs exactly one request row for the whole call — the pipeline is one
-    user-facing action ("Generate insights"), even though it makes two Claude
-    API calls under the hood. The logged confidence_score is the average across
-    the final (post-critic) insights, or omitted if every candidate was rejected.
-    """
+    """Full pipeline: summarize → LLM #1 (insight agent) → LLM #2 (critic) → merge + log."""
     start = time.monotonic()
     summary = build_data_summary(df)
 
     try:
-        candidates = generate_insights(summary, client=client)
-        reviews = review_insights(candidates, summary, client=client)
+        candidates = generate_insights(summary, client=client)       # LLM call 1: generate
+        reviews = review_insights(candidates, summary, client=client) # LLM call 2: critique
     except (InsightGenerationError, CriticReviewError) as exc:
         log_request(
             "generate_insights",
@@ -51,10 +45,10 @@ def run_insight_pipeline(df: pd.DataFrame, client: anthropic.Anthropic | None = 
         )
         raise PipelineError(str(exc)) from exc
 
-    final = merge_insights_with_reviews(candidates, reviews)
+    final = merge_insights_with_reviews(candidates, reviews)  # rejected candidates dropped here
     elapsed = time.monotonic() - start
     avg_confidence = (
-        sum(item["confidence"] for item in final) / len(final) if final else None
+        sum(item["confidence"] for item in final) / len(final) if final else None  # logged for quality tracking
     )
     log_request(
         "generate_insights",

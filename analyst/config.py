@@ -102,14 +102,13 @@ QA_AGG_MAX_CARDINALITY: int = 15  # skip categoricals with more distinct values
 # --- Input validation limits (production hardening req #9) ------------------
 # 5 MB matches the requirement. Streamlit also enforces a server-side upload cap,
 # but we validate independently so the rule is explicit and testable.
-MAX_UPLOAD_BYTES: int = 5 * 1024 * 1024  # 5 MB
-# Row cap protects both memory and the size of the data summary we send to Claude.
-MAX_ROWS: int = 50_000
+MAX_UPLOAD_BYTES: int = 5 * 1024 * 1024  # 5 MB — rejected before reading to protect memory
+MAX_ROWS: int = 50_000                   # keeps the data summary small and prompt cost bounded
 
 # --- Rate limiting (production hardening req #11) ---------------------------
 # Each Streamlit session may make at most this many *billable* agent requests
 # (insight generation + Q&A). Chosen to bound API spend per user session.
-MAX_REQUESTS_PER_SESSION: int = 15
+MAX_REQUESTS_PER_SESSION: int = 15  # primary cost control — bounds total API spend per user session
 
 # --- Insight generation tuning ---------------------------------------------
 # How many candidate insights we ask the insight agent to produce. The critic

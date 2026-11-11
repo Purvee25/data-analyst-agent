@@ -40,7 +40,7 @@ from . import config
 from .claude_client import get_client
 from .llm_json import ClaudeJSONError, call_for_json
 
-VALID_CATEGORIES = ("trend", "anomaly", "comparison", "correlation")
+VALID_CATEGORIES = ("trend", "anomaly", "comparison", "correlation")  # JSON schema enum — model can't return anything else
 
 INSIGHT_SCHEMA = {
     "type": "object",
@@ -129,12 +129,7 @@ def _categorical_column_summary(series: pd.Series, top_n: int = 5) -> str:
 
 
 def build_data_summary(df: pd.DataFrame, sample_rows: int = config.SAMPLE_ROWS_FOR_LLM) -> str:
-    """Turn a cleaned DataFrame into a compact, LLM-ready text summary.
-
-    Kept as plain text (not JSON) because the insight agent consumes this as a
-    prompt, not as structured data it parses in code — readability for the model
-    (and for a human debugging a prompt) matters more here than machine parsing.
-    """
+    """Compact text summary: stats + top categories + sample rows — cheaper than sending raw data."""
     lines = [f"Dataset shape: {df.shape[0]} rows x {df.shape[1]} columns.", ""]
     lines.append("Columns and types:")
     for col in df.columns:
@@ -179,12 +174,7 @@ def build_data_summary(df: pd.DataFrame, sample_rows: int = config.SAMPLE_ROWS_F
 
 
 def _is_id_like(series: pd.Series, name: str) -> bool:
-    """True for numeric columns that are identifiers, not measures.
-
-    Summing a Row ID or Postal Code is meaningless and — worse — would consume a
-    measure slot that a real metric like Profit needs. Caught two ways: a name
-    hinting at an identifier, or near-unique values (an id, not a quantity).
-    """
+    """True if the column is an ID/code — skip aggregating these (sum of Row IDs is meaningless)."""
     lowered = name.lower()
     if any(hint in lowered for hint in ("id", "zip", "postal", "code", "phone")):
         return True
