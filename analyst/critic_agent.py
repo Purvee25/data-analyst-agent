@@ -146,23 +146,15 @@ def review_insights(
 
 
 def apply_verdict(insight: dict, review: dict) -> dict | None:
-    """Merge one critic review into its insight, or return None if rejected.
-
-    This is deliberately a plain, side-effect-free function (no API call, no
-    randomness) — it's the actual decision logic (keep or drop? what confidence?)
-    and is the piece worth unit testing in isolation, independent of mocking any
-    network call.
-    """
+    """Apply critic verdict: reject → None, approve/downgrade → merged dict."""
     verdict = review.get("verdict")
     if verdict not in VALID_VERDICTS:
-        verdict = "downgrade"  # an unrecognized verdict is treated cautiously, not trusted as approve.
+        verdict = "downgrade"  # unknown verdict treated cautiously, never as approve
 
     if verdict == "reject":
-        return None
+        return None  # insight dropped; user never sees it
 
-    # Clamp defensively: the schema asks for 0.0-1.0 but structured outputs don't
-    # enforce numeric ranges (only additionalProperties/enum/required are
-    # guaranteed), so a stray 1.2 or -0.1 from the model must not leak into the UI.
+    # clamp to 0–1; JSON schema enforces enum but not numeric range
     confidence = review.get("confidence", 0.0)
     try:
         confidence = float(confidence)
@@ -171,24 +163,18 @@ def apply_verdict(insight: dict, review: dict) -> dict | None:
     confidence = max(0.0, min(1.0, confidence))
 
     if verdict == "downgrade":
-        # A "downgrade" verdict must actually lower displayed confidence — otherwise
-        # the distinction between "approve" and "downgrade" is cosmetic only.
-        confidence = min(confidence, 0.5)
+        confidence = min(confidence, 0.5)  # downgrade must visibly lower confidence
 
     merged = dict(insight)
     merged["confidence"] = confidence
     merged["critic_verdict"] = verdict
-    merged["critic_reasoning"] = review.get("reasoning", "")
+    merged["critic_reasoning"] = review.get("reasoning", "")  # shown to user alongside insight
     return merged
 
 
 def merge_insights_with_reviews(insights: list[dict], reviews: list[dict]) -> list[dict]:
-    """Combine candidate insights with their critic reviews into the final list.
-
-    Insights the critic didn't review at all (a missing index — the model
-    skipped one, or review count didn't match) are dropped rather than shown
-    unvetted: publishing an insight nobody actually checked defeats the purpose
-    of having a critic in the first place.
+    """Match each insight to its critic review; drop any the critic didn't review.
+    Unreviewed insights are silently dropped — never shown unvetted.
     """
     reviews_by_index = {
         review.get("index"): review for review in reviews if isinstance(review.get("index"), int)
@@ -198,7 +184,7 @@ def merge_insights_with_reviews(insights: list[dict], reviews: list[dict]) -> li
     for i, insight in enumerate(insights):
         review = reviews_by_index.get(i)
         if review is None:
-            continue
+            continue  # critic skipped this insight → drop it
         merged = apply_verdict(insight, review)
         if merged is not None:
             final.append(merged)
