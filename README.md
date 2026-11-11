@@ -40,43 +40,23 @@ Ollama** (no API key, no credits). The full two-agent pipeline is identical eith
 ## Architecture
 
 ```mermaid
-flowchart TD
-    CSV["CSV Upload\n≤5 MB · ≤50 000 rows"]
-    GUARD["guardrails.py\nsize / row / type validation\nrejected before parsing"]
-    CLEAN["cleaning.py\ndates · currency · duplicates\nDataQualityReport"]
-    SUMMARY["build_data_summary()\ncompact stats + top categories\n+ sample rows — never raw data"]
+flowchart LR
+    CSV["① Upload CSV\n≤5 MB · ≤50k rows"] -->
+    CLEAN["② Clean + Validate\nguardrails · cleaning.py\ndates, currency, dupes"] -->
+    SUMMARY["③ Summarise\nstats + sample rows\nnever raw data to LLM"]
 
-    subgraph PIPELINE["pipeline.py — Two-Agent Pipeline"]
-        INSIGHT["Insight Agent\nLLM Call #1\ngenerate_insights()\n3–5 candidates · JSON schema"]
-        CRITIC["Critic Agent\nLLM Call #2\nreview_insights()\napprove / downgrade / reject"]
-        MERGE["merge + log\nrejected → dropped\ndowngrade → confidence ≤ 0.5"]
-        INSIGHT --> CRITIC
-        CRITIC --> MERGE
-    end
-
-    QA["qa_agent.py\nNL follow-ups\nsession memory (20 msgs)\nchart spec → pandas"]
-    ACTIONS["actions.py\nemail-alert spec\nhuman confirm → MCP → SMTP"]
-    LOGGER["logger.py\nlogs/requests.csv\n→ /api/metrics panel"]
-    UI["React / Streamlit UI\ninsights + confidence\n+ critic reasoning"]
-    PROVIDER["claude_client.get_client()\nClaude API (paid)\nOllama (free local)\nGroq (free hosted)"]
-
-    CSV --> GUARD
-    GUARD --> CLEAN
-    CLEAN --> SUMMARY
-    SUMMARY --> PIPELINE
-    PIPELINE --> UI
-    PIPELINE --> QA
-    PIPELINE --> ACTIONS
-    PIPELINE --> LOGGER
-    PROVIDER -.->|"same interface"| INSIGHT
-    PROVIDER -.->|"same interface"| CRITIC
+    SUMMARY --> INSIGHT["④a Insight Agent\nLLM Call #1\n3–5 candidates"]
+    SUMMARY --> CRITIC["④b Critic Agent\nLLM Call #2\napprove / reject"]
+    INSIGHT --> CRITIC
+    CRITIC --> UI["⑤ Show Results\nconfidence score\ncritic reasoning\nfollow-up Q&A"]
 ```
 
+**Why two separate AI calls?** A single model grading its own work creates self-critique bias. LLM #1 generates; LLM #2 independently validates — weak claims are dropped before you see them.
+
 **Key design decisions:**
-- **Two-agent separation:** insight agent and critic are **separate LLM calls** — same model grading its own work in one call creates self-critique bias.
-- **Summary, never raw data:** model receives pre-computed aggregates (pandas), not raw rows — cheaper, accurate at any file size.
-- **JSON schema enforcement:** `output_config.format.type="json_schema"` constrains the response shape; retry with `CLARIFY_SUFFIX` handles truncation.
-- **Multi-LLM routing:** Claude / Ollama / Groq — same two-agent pipeline, adapter in `config.py`.
+- **Summary not raw data** — model gets pre-computed stats, not rows; works at any file size.
+- **JSON schema enforcement** — `output_config.format.type="json_schema"` so the model can't return free text.
+- **Free local mode** — set `LLM_PROVIDER=ollama`; identical pipeline, no API key needed.
 
 ## Run the web app (recommended)
 
