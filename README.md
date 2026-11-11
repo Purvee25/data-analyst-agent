@@ -39,38 +39,44 @@ Ollama** (no API key, no credits). The full two-agent pipeline is identical eith
 
 ## Architecture
 
-```
-Raw CSV
-   │  guardrails.py ── size / row / extension validation (rejected before parsing)
-   │  cleaning.py ──── code-based cleaning (dates, currency text, duplicates,
-   │                   encoding fallback) + auditable DataQualityReport
-   ▼
-Clean DataFrame ──► insight_agent.build_data_summary()  (compact stats, never raw rows)
-   │                        │
-   │              ┌─────────▼──────────┐
-   │              │ pipeline.py        │
-   │              │  1. insight_agent  │── model call #1: 3–5 candidate insights (JSON schema)
-   │              │  2. critic_agent   │── model call #2: approve / downgrade / reject + reasoning
-   │              │  3. merge + log    │
-   │              └─────────┬──────────┘
-   │                        ▼  final insights (confidence + critic reasoning)
-   │
-   ├──► qa_agent.py ── NL follow-ups with trimmed session memory; emits a
-   │                   declarative chart SPEC (never code) ─► charts computed by our pandas code
-   │
-   ├──► actions.py ── email-alert SPEC ─► guardrails.validate_action_spec ─►
-   │                  human confirm ─► mcp_client.py ─► local MCP server ─► SMTP
-   │
-   └──► logger.py ── logs/requests.csv ─► /api/metrics ─► "Agent metrics" panel
+```mermaid
+flowchart TD
+    CSV["CSV Upload\n≤5 MB · ≤50 000 rows"]
+    GUARD["guardrails.py\nsize / row / type validation\nrejected before parsing"]
+    CLEAN["cleaning.py\ndates · currency · duplicates\nDataQualityReport"]
+    SUMMARY["build_data_summary()\ncompact stats + top categories\n+ sample rows — never raw data"]
 
-claude_client.get_client()  ── one switch: paid Anthropic API  ⇄  free local Ollama
+    subgraph PIPELINE["pipeline.py — Two-Agent Pipeline"]
+        INSIGHT["Insight Agent\nLLM Call #1\ngenerate_insights()\n3–5 candidates · JSON schema"]
+        CRITIC["Critic Agent\nLLM Call #2\nreview_insights()\napprove / downgrade / reject"]
+        MERGE["merge + log\nrejected → dropped\ndowngrade → confidence ≤ 0.5"]
+        INSIGHT --> CRITIC
+        CRITIC --> MERGE
+    end
+
+    QA["qa_agent.py\nNL follow-ups\nsession memory (20 msgs)\nchart spec → pandas"]
+    ACTIONS["actions.py\nemail-alert spec\nhuman confirm → MCP → SMTP"]
+    LOGGER["logger.py\nlogs/requests.csv\n→ /api/metrics panel"]
+    UI["React / Streamlit UI\ninsights + confidence\n+ critic reasoning"]
+    PROVIDER["claude_client.get_client()\nClaude API (paid)\nOllama (free local)\nGroq (free hosted)"]
+
+    CSV --> GUARD
+    GUARD --> CLEAN
+    CLEAN --> SUMMARY
+    SUMMARY --> PIPELINE
+    PIPELINE --> UI
+    PIPELINE --> QA
+    PIPELINE --> ACTIONS
+    PIPELINE --> LOGGER
+    PROVIDER -.->|"same interface"| INSIGHT
+    PROVIDER -.->|"same interface"| CRITIC
 ```
 
-**Key design decision:** the model never sees the full dataset and never supplies
-executable code. It receives a compact statistical summary (a few hundred tokens
-regardless of file size) and returns schema-constrained JSON. Aggregations and
-charts are computed by pandas from the real data — the model decides *what* is
-worth showing, never *how* it is computed.
+**Key design decisions:**
+- **Two-agent separation:** insight agent and critic are **separate LLM calls** — same model grading its own work in one call creates self-critique bias.
+- **Summary, never raw data:** model receives pre-computed aggregates (pandas), not raw rows — cheaper, accurate at any file size.
+- **JSON schema enforcement:** `output_config.format.type="json_schema"` constrains the response shape; retry with `CLARIFY_SUFFIX` handles truncation.
+- **Multi-LLM routing:** Claude / Ollama / Groq — same two-agent pipeline, adapter in `config.py`.
 
 ## Run the web app (recommended)
 
