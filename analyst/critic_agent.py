@@ -52,7 +52,7 @@ CRITIC_SCHEMA = {
                     },
                     "reasoning": {
                         "type": "string",
-                        "description": "Your statistical reasoning for the verdict — what you checked and why.",
+                        "description": "ONE short sentence (max 25 words) naming the main concern or why it holds up.",
                     },
                 },
                 "required": ["index", "verdict", "confidence", "reasoning"],
@@ -89,7 +89,8 @@ minor caveat — keep it, but your confidence score should reflect the concern.
 meaningful — it should not be shown to a stakeholder.
 
 confidence must be a number between 0.0 and 1.0. Be specific in your reasoning — \
-name the actual concern, don't just restate the verdict.
+name the actual concern, don't just restate the verdict. Keep reasoning to \
+one short sentence (max 25 words); do not repeat the confidence number.
 """
 
 

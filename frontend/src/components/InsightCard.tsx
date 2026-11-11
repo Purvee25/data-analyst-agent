@@ -58,48 +58,41 @@ function InsightCard({
 
   return (
     <div
-      className="card card-lift animate-fade-up p-6"
+      className="card card-lift animate-fade-up p-5"
       style={{ animationDelay: `${index * 80}ms` }}
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <span className={`kicker ${CATEGORY_STYLE[insight.category]}`}>{insight.category}</span>
         <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${verdict.cls}`}>
           <span className="h-1.5 w-1.5 rounded-full bg-current" />
-          {verdict.label}
+          {verdict.label} · <span className="tabular-nums">{pct}%</span>
         </span>
       </div>
 
-      <p className="font-serif text-lg font-medium leading-snug text-ink">{insight.insight}</p>
+      <p className="font-serif text-base font-medium leading-snug text-ink">{insight.insight}</p>
 
-      <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-        <span className="font-semibold text-ink">Supporting data — </span>
-        {insight.supporting_data}
-      </p>
+      <p className="mt-2 font-mono text-xs leading-relaxed text-ink-soft">{insight.supporting_data}</p>
 
-      {/* Confidence meter */}
-      <div className="mt-5">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="kicker">Confidence</span>
-          <span className="text-sm font-semibold tabular-nums text-ink">{pct}%</span>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.06]">
-          <div
-            className={`h-full rounded-full ${confColor(insight.confidence)} transition-all duration-700`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+      {/* Thin confidence bar */}
+      <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-ink/[0.06]">
+        <div
+          className={`h-full rounded-full ${confColor(insight.confidence)} transition-all duration-700`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
 
-      {/* Critic reasoning */}
-      <div className="mt-5 border-l-2 border-line-strong pl-3">
-        <p className="text-sm leading-relaxed text-ink-soft">
-          <span className="font-semibold text-ink">Critic&apos;s review — </span>
+      {/* Critic reasoning — collapsed by default to keep cards scannable */}
+      <details className="group mt-3">
+        <summary className="cursor-pointer list-none text-xs font-semibold text-ink-soft hover:text-ink">
+          <span className="inline-block transition group-open:rotate-90">›</span> Critic&apos;s review
+        </summary>
+        <p className="mt-2 border-l-2 border-line-strong pl-3 text-sm leading-relaxed text-ink-soft">
           {insight.critic_reasoning}
         </p>
-      </div>
+      </details>
 
       {/* Real-world action (USP #4): human-confirmed email via the local MCP server. */}
-      <div className="mt-5 border-t border-line pt-4">
+      <div className="mt-3 border-t border-line pt-3">
         {email.kind === "sent" ? (
           <p className="text-xs font-medium text-approve">✓ {email.message}</p>
         ) : email.kind === "confirming" ? (

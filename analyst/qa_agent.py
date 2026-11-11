@@ -31,7 +31,7 @@ QA_SCHEMA = {
     "properties": {
         "answer": {
             "type": "string",
-            "description": "Plain English answer to the user's question, grounded in the dataset summary.",
+            "description": "Short plain-text answer grounded in the dataset summary: 1-3 sentences, or up to 4 bullet lines starting with '- '. No markdown bold or headings.",
         },
         "chart": {
             "anyOf": [
@@ -77,7 +77,13 @@ aggregate, trend over time, or comparison across categories. Use EXACT column \
 names from the summary. Use a "line" chart with a date column as x for trends, \
 and a "bar" chart otherwise. Set chart to null for questions a sentence \
 answers fully.
-- Keep answers concise: a stakeholder should get the point in 2-4 sentences.
+- Keep answers short: lead with the direct answer and its number in the first \
+sentence. Use at most 3 sentences, or for lists/recommendations at most 4 \
+bullet lines, each starting with "- " and under 15 words. No markdown bold, \
+headings or numbered essays.
+- For "how to improve"/advice questions, base each suggestion on a specific \
+number from the summary (e.g. a loss-making sub-category or a high discount), \
+not generic business advice.
 
 Dataset summary:
 

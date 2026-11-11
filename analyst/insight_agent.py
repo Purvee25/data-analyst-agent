@@ -52,11 +52,11 @@ INSIGHT_SCHEMA = {
                 "properties": {
                     "insight": {
                         "type": "string",
-                        "description": "Plain English description of the finding.",
+                        "description": "ONE short sentence (max 20 words) stating the finding, leading with the key number. No 'This suggests' filler.",
                     },
                     "supporting_data": {
                         "type": "string",
-                        "description": "The specific numbers/stats from the summary that support this finding.",
+                        "description": "Only the key numbers, compact (max 15 words), e.g. 'West: $108k profit vs Central: $39k'.",
                     },
                     "category": {
                         "type": "string",
@@ -90,6 +90,11 @@ single raw value (e.g. "there are 21 columns" is not an insight).
 
 Do not hedge with disclaimers about needing more data — a separate review step \
 handles statistical validity. Your job here is candidate generation only.
+
+Style: be brief and scannable. Each insight is a single plain sentence of at \
+most 20 words that leads with the number (e.g. "Technology drives 51% of \
+profit on only 37% of sales."). Prefer comparisons, gaps and outliers over \
+restating an average, min or max.
 """
 
 class InsightGenerationError(Exception):

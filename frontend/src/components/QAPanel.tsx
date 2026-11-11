@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { askQuestion } from "../api";
 import type { ChartData } from "../types";
 import Chart from "./Chart";
-import TypedText from "./TypedText";
+import FormattedAnswer from "./FormattedAnswer";
 
 interface Turn {
   role: "user" | "assistant";
@@ -83,7 +83,7 @@ export default function QAPanel({
           ) : (
             <div key={i} className="flex flex-col">
               <div className="max-w-[92%] rounded-lg rounded-bl-sm border border-line bg-paper px-4 py-2.5 text-sm leading-relaxed text-ink">
-                {i === turns.length - 1 ? <TypedText text={t.text} /> : t.text}
+                <FormattedAnswer text={t.text} />
               </div>
               {t.chart && <Chart data={t.chart} />}
             </div>
