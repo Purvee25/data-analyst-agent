@@ -15,6 +15,7 @@ import json
 
 import anthropic
 
+# appended on retry — tells Claude to drop prose/markdown and return raw JSON only
 CLARIFY_SUFFIX = """
 
 Your previous response could not be parsed as valid JSON. Respond again with \
@@ -32,8 +33,10 @@ class ClaudeJSONError(Exception):
 
 
 def _extract_text(response: anthropic.types.Message) -> str:
+    # safety refusal = Claude declined due to content policy
     if response.stop_reason == "refusal":
         raise ClaudeJSONError("Claude declined to respond (safety refusal).")
+    # max_tokens = response cut off mid-JSON; parsing would fail anyway
     if response.stop_reason == "max_tokens":
         raise ClaudeJSONError(
             "Claude's response was cut off before completing (max_tokens reached)."
@@ -48,7 +51,7 @@ def _try_parse(text: str) -> dict | None:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        return None
+        return None  # caller decides whether to retry
 
 
 def call_for_json(
@@ -61,13 +64,11 @@ def call_for_json(
     schema: dict,
     history: list[dict] | None = None,
 ) -> dict:
-    """Call Claude with a JSON-schema-constrained request; parse and retry once.
+    """Call Claude with a JSON schema constraint; parse and retry once on failure.
 
-    `history` is an optional list of prior {"role", "content"} messages placed
-    before the new user turn — this is how the Q&A agent carries session
-    memory while the insight/critic agents (which pass no history) stay
-    single-turn. Raises ClaudeJSONError (never a raw SDK exception or
-    json.JSONDecodeError) on any failure, including after the retry.
+    history = prior messages; used by Q&A agent for session memory.
+    insight/critic agents pass no history — each call is fully independent.
+    Always raises ClaudeJSONError, never a raw SDK exception or json.JSONDecodeError.
     """
 
     def _do(content: str) -> anthropic.types.Message:
@@ -75,12 +76,14 @@ def call_for_json(
             model=model,
             max_tokens=max_tokens,
             system=system,
+            # history (if any) prepended so Q&A agent remembers prior turns
             messages=[*(history or []), {"role": "user", "content": content}],
+            # json_schema forces the API to return valid JSON matching our schema
             output_config={"format": {"type": "json_schema", "schema": schema}},
         )
 
     try:
-        response = _do(user_content)
+        response = _do(user_content)  # attempt 1
     except (anthropic.APIError, OSError) as exc:
         raise ClaudeJSONError(f"Claude API request failed: {exc}") from exc
 
@@ -88,6 +91,7 @@ def call_for_json(
     parsed = _try_parse(text)
 
     if parsed is None:
+        # attempt 2 — append CLARIFY_SUFFIX to fix malformed JSON
         try:
             response = _do(user_content + CLARIFY_SUFFIX)
         except (anthropic.APIError, OSError) as exc:
@@ -96,6 +100,7 @@ def call_for_json(
         parsed = _try_parse(text)
 
     if parsed is None:
+        # failed twice — give up rather than looping indefinitely
         raise ClaudeJSONError("Claude returned malformed JSON twice in a row; giving up.")
 
     return parsed
